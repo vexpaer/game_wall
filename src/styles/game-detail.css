@@ -15,8 +15,9 @@
 .detail-hero--fallback {
   background:
     radial-gradient(circle at 75% 10%, rgba(155, 140, 255, 0.2), transparent 27rem),
-    radial-gradient(circle at 20% 60%, rgba(86, 217, 237, 0.1), transparent 25rem),
-    linear-gradient(145deg, #10243a, #07111f);
+    radial-gradient(circle at 20% 60%, rgba(255, 138, 101, 0.13), transparent 25rem),
+    radial-gradient(circle at 80% 10%, rgba(180, 156, 255, 0.14), transparent 24rem),
+    linear-gradient(145deg, #211b2c, #0b0a10);
 }
 
 .detail-hero__backdrop {
@@ -79,7 +80,7 @@
   display: grid;
   place-items: center;
   background:
-    linear-gradient(130deg, rgba(86, 217, 237, 0.15), transparent 50%),
+    linear-gradient(130deg, rgba(255, 138, 101, 0.16), transparent 50%),
     #102238;
 }
 
@@ -126,7 +127,7 @@
 
 .detail-hero__tags .platform-tag {
   color: var(--cyan);
-  border-color: rgba(86, 217, 237, 0.18);
+  border-color: rgba(255, 138, 101, 0.22);
 }
 
 .detail-hero__actions {
@@ -151,7 +152,7 @@
 
 .detail-button--primary {
   border-color: transparent;
-  color: #07111f;
+  color: #160b09;
   background: var(--cyan);
 }
 
@@ -182,7 +183,7 @@
   flex: 0 0 auto;
   border-radius: 10px;
   color: var(--cyan);
-  background: rgba(86, 217, 237, 0.08);
+  background: rgba(255, 138, 101, 0.09);
 }
 
 .detail-metrics article > div {
@@ -348,10 +349,10 @@
 .community-card {
   padding: 28px;
   overflow: hidden;
-  border: 1px solid rgba(86, 217, 237, 0.2);
+  border: 1px solid rgba(255, 138, 101, 0.24);
   border-radius: var(--radius-lg);
   background:
-    radial-gradient(circle at 100% 0, rgba(86, 217, 237, 0.18), transparent 13rem),
+    radial-gradient(circle at 100% 0, rgba(180, 156, 255, 0.2), transparent 13rem),
     linear-gradient(145deg, #10263a, #0a1726);
 }
 
@@ -363,7 +364,7 @@
   place-items: center;
   border-radius: 13px;
   color: var(--cyan);
-  background: rgba(86, 217, 237, 0.1);
+  background: rgba(255, 138, 101, 0.11);
 }
 
 .community-card p {

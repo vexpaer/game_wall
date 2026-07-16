@@ -1,26 +1,26 @@
 :root {
   color-scheme: dark;
-  --bg: #07111f;
-  --bg-deep: #040b15;
-  --surface: #0c1929;
-  --surface-raised: #112238;
-  --surface-soft: #0a1625;
-  --line: rgba(153, 190, 218, 0.14);
-  --line-strong: rgba(128, 210, 229, 0.28);
-  --text: #f2f7fb;
-  --muted: #95a9ba;
-  --muted-strong: #bdcbd6;
-  --cyan: #56d9ed;
-  --cyan-strong: #22b9d1;
-  --lime: #a7ef60;
-  --amber: #f5bd62;
-  --violet: #9b8cff;
-  --danger: #ff818f;
-  --radius-sm: 10px;
-  --radius: 16px;
-  --radius-lg: 24px;
-  --shadow: 0 24px 70px rgba(0, 0, 0, 0.32);
-  --content: 1240px;
+  --bg: #0b0a10;
+  --bg-deep: #070609;
+  --surface: #15131c;
+  --surface-raised: #1d1927;
+  --surface-soft: #110f18;
+  --line: rgba(242, 232, 222, 0.11);
+  --line-strong: rgba(255, 138, 101, 0.34);
+  --text: #f8f4ee;
+  --muted: #a8a1b2;
+  --muted-strong: #d0c8d4;
+  --cyan: #ff8a65;
+  --cyan-strong: #ff625c;
+  --lime: #63e6b0;
+  --amber: #f4c76b;
+  --violet: #b49cff;
+  --danger: #ff7f91;
+  --radius-sm: 12px;
+  --radius: 20px;
+  --radius-lg: 30px;
+  --shadow: 0 28px 80px rgba(0, 0, 0, 0.42);
+  --content: 1320px;
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     "Microsoft YaHei", "PingFang SC", sans-serif;
@@ -43,9 +43,9 @@ body {
   min-height: 100vh;
   color: var(--text);
   background:
-    radial-gradient(circle at 85% -8%, rgba(44, 168, 197, 0.12), transparent 32rem),
-    radial-gradient(circle at 0 22%, rgba(94, 85, 178, 0.08), transparent 28rem),
-    linear-gradient(180deg, #07111f 0%, #060f1c 55%, #040b15 100%);
+    radial-gradient(circle at 88% -4%, rgba(180, 156, 255, 0.18), transparent 34rem),
+    radial-gradient(circle at -4% 34%, rgba(255, 98, 92, 0.12), transparent 32rem),
+    linear-gradient(180deg, #0d0b13 0%, #0a0910 52%, #070609 100%);
   font-size: 16px;
   line-height: 1.6;
   text-rendering: optimizeLegibility;
@@ -57,12 +57,10 @@ body::before {
   z-index: -1;
   pointer-events: none;
   content: "";
-  opacity: 0.14;
-  background-image:
-    linear-gradient(rgba(110, 171, 194, 0.08) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(110, 171, 194, 0.08) 1px, transparent 1px);
-  background-size: 48px 48px;
-  mask-image: linear-gradient(to bottom, black, transparent 75%);
+  opacity: 0.45;
+  background-image: radial-gradient(circle, rgba(248, 244, 238, 0.08) 0.65px, transparent 0.8px);
+  background-size: 18px 18px;
+  mask-image: linear-gradient(to bottom, black, transparent 70%);
 }
 
 img {
@@ -89,12 +87,12 @@ select {
 }
 
 :focus-visible {
-  outline: 3px solid rgba(86, 217, 237, 0.7);
+  outline: 3px solid rgba(255, 138, 101, 0.78);
   outline-offset: 3px;
 }
 
 ::selection {
-  color: #05101a;
+  color: #140b0a;
   background: var(--cyan);
 }
 
@@ -120,12 +118,21 @@ select {
 }
 
 .site-header {
-  min-height: 82px;
+  position: sticky;
+  top: 12px;
+  z-index: 50;
+  min-height: 72px;
+  margin-top: 16px;
+  padding: 0 18px;
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: 28px;
-  border-bottom: 1px solid var(--line);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: rgba(18, 16, 25, 0.78);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(22px) saturate(130%);
 }
 
 .brand,
@@ -145,11 +152,11 @@ select {
   display: grid;
   place-items: center;
   flex: 0 0 auto;
-  border: 1px solid rgba(86, 217, 237, 0.28);
-  border-radius: 12px;
+  border: 1px solid rgba(255, 138, 101, 0.34);
+  border-radius: 14px;
   color: var(--cyan);
-  background: linear-gradient(145deg, rgba(86, 217, 237, 0.16), rgba(86, 217, 237, 0.04));
-  box-shadow: inset 0 0 20px rgba(86, 217, 237, 0.05);
+  background: linear-gradient(145deg, rgba(255, 138, 101, 0.2), rgba(180, 156, 255, 0.08));
+  box-shadow: inset 0 0 22px rgba(255, 138, 101, 0.06);
 }
 
 .brand-mark--small {
@@ -165,7 +172,8 @@ select {
 }
 
 .brand-copy strong {
-  font-size: 0.92rem;
+  font-size: 0.96rem;
+  letter-spacing: 0.04em;
 }
 
 .brand-copy small {
@@ -196,7 +204,7 @@ select {
   left: 0;
   height: 2px;
   content: "";
-  background: var(--cyan);
+  background: linear-gradient(90deg, var(--cyan), var(--violet));
   transform: scaleX(0);
   transition: transform 180ms ease;
 }
@@ -215,10 +223,10 @@ select {
   align-items: center;
   gap: 8px;
   padding: 7px 11px;
-  border: 1px solid rgba(167, 239, 96, 0.2);
+  border: 1px solid rgba(99, 230, 176, 0.24);
   border-radius: 999px;
-  color: #c9e8b2;
-  background: rgba(167, 239, 96, 0.06);
+  color: #aaf1d2;
+  background: rgba(99, 230, 176, 0.07);
   font-size: 0.72rem;
   white-space: nowrap;
 }

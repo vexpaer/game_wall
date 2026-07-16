@@ -71,7 +71,9 @@ const lastPlayed = game.lastPlayedAt ? Date.parse(game.lastPlayedAt) || 0 : 0;
         {genres.length > 0 ? genres.map((genre) => <span>{genre}</span>) : <span>游戏</span>}
         {game.playtime.recentMinutes > 0 && <span class="game-card__recent">近两周 {formatDuration(game.playtime.recentMinutes)}</span>}
       </div>
-      <AchievementBadge achievements={game.achievements} compact />
+      <div class="game-card__achievement">
+        <AchievementBadge achievements={game.achievements} compact />
+      </div>
     </div>
   </a>
 </article>
@@ -82,15 +84,18 @@ const lastPlayed = game.lastPlayedAt ? Date.parse(game.lastPlayedAt) || 0 : 0;
     overflow: hidden;
     border: 1px solid var(--line);
     border-radius: var(--radius);
-    background: var(--surface);
-    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.15);
+    background:
+      linear-gradient(145deg, rgba(255, 255, 255, 0.025), transparent 54%),
+      var(--surface);
+    box-shadow: 0 20px 48px rgba(0, 0, 0, 0.2);
     transition: border-color 180ms ease, transform 180ms ease, box-shadow 180ms ease;
   }
 
-  .game-card:hover {
+  .game-card:hover,
+  .game-card:focus-within {
     border-color: var(--line-strong);
     transform: translateY(-3px);
-    box-shadow: 0 23px 50px rgba(0, 0, 0, 0.24);
+    box-shadow: 0 26px 56px rgba(0, 0, 0, 0.3), 0 0 0 3px rgba(255, 138, 101, 0.08);
   }
 
   .game-card__link {
@@ -99,12 +104,16 @@ const lastPlayed = game.lastPlayedAt ? Date.parse(game.lastPlayedAt) || 0 : 0;
     flex-direction: column;
   }
 
+  .game-card__link:focus-visible {
+    outline-offset: -4px;
+  }
+
   .game-card__art {
     position: relative;
     aspect-ratio: 460 / 215;
     overflow: hidden;
     background:
-      linear-gradient(120deg, rgba(86, 217, 237, 0.12), transparent 52%),
+      linear-gradient(120deg, rgba(255, 138, 101, 0.15), transparent 52%),
       var(--surface-raised);
   }
 
@@ -112,7 +121,7 @@ const lastPlayed = game.lastPlayedAt ? Date.parse(game.lastPlayedAt) || 0 : 0;
     position: absolute;
     inset: 35% 0 0;
     content: "";
-    background: linear-gradient(to bottom, transparent, rgba(4, 11, 21, 0.42));
+    background: linear-gradient(to bottom, transparent, rgba(7, 6, 9, 0.5));
   }
 
   .game-card__art > img:not(.game-card__icon) {
@@ -130,8 +139,9 @@ const lastPlayed = game.lastPlayedAt ? Date.parse(game.lastPlayedAt) || 0 : 0;
     display: grid;
     place-items: center;
     background:
-      radial-gradient(circle at 70% 20%, rgba(155, 140, 255, 0.24), transparent 45%),
-      linear-gradient(145deg, #173047, #0a1727 72%);
+      radial-gradient(circle at 70% 20%, rgba(180, 156, 255, 0.3), transparent 45%),
+      radial-gradient(circle at 15% 90%, rgba(255, 98, 92, 0.2), transparent 42%),
+      linear-gradient(145deg, #211b2c, #100e16 72%);
   }
 
   .game-card__art--fallback::before {
@@ -139,7 +149,7 @@ const lastPlayed = game.lastPlayedAt ? Date.parse(game.lastPlayedAt) || 0 : 0;
     width: 70%;
     height: 1px;
     content: "";
-    background: linear-gradient(90deg, transparent, rgba(86, 217, 237, 0.4), transparent);
+    background: linear-gradient(90deg, transparent, rgba(255, 138, 101, 0.52), transparent);
     transform: rotate(-24deg);
   }
 
@@ -165,7 +175,7 @@ const lastPlayed = game.lastPlayedAt ? Date.parse(game.lastPlayedAt) || 0 : 0;
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 5px;
     color: rgba(255, 255, 255, 0.7);
-    background: rgba(3, 9, 17, 0.64);
+    background: rgba(7, 6, 9, 0.68);
     backdrop-filter: blur(7px);
     font-size: 0.58rem;
     letter-spacing: 0.08em;
@@ -215,9 +225,10 @@ const lastPlayed = game.lastPlayedAt ? Date.parse(game.lastPlayedAt) || 0 : 0;
     transition: color 180ms ease, background 180ms ease;
   }
 
-  .game-card:hover .game-card__arrow {
+  .game-card:hover .game-card__arrow,
+  .game-card:focus-within .game-card__arrow {
     color: var(--cyan);
-    background: rgba(86, 217, 237, 0.08);
+    background: rgba(255, 138, 101, 0.09);
   }
 
   .game-card__tags {
@@ -232,13 +243,17 @@ const lastPlayed = game.lastPlayedAt ? Date.parse(game.lastPlayedAt) || 0 : 0;
     padding: 3px 7px;
     border-radius: 5px;
     color: var(--muted-strong);
-    background: rgba(145, 177, 199, 0.08);
+    background: rgba(208, 200, 212, 0.08);
     font-size: 0.62rem;
   }
 
   .game-card__tags .game-card__recent {
     color: var(--lime);
-    background: rgba(167, 239, 96, 0.08);
+    background: rgba(99, 230, 176, 0.09);
+  }
+
+  .game-card__achievement {
+    margin-top: auto;
   }
 
   .game-card[hidden] {

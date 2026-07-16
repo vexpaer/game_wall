@@ -23,17 +23,37 @@ const { label, value, detail, icon, tone = "cyan" } = Astro.props;
 
 <style>
   .metric-card {
+    position: relative;
     min-width: 0;
     min-height: 150px;
     padding: 20px;
     display: flex;
     flex-direction: column;
     border: 1px solid var(--line);
-    border-radius: var(--radius);
+    overflow: hidden;
+    border-radius: 22px;
     background:
-      linear-gradient(145deg, rgba(255, 255, 255, 0.025), transparent 58%),
+      radial-gradient(circle at 100% 0, color-mix(in srgb, var(--metric-color) 12%, transparent), transparent 8rem),
+      linear-gradient(145deg, rgba(255, 255, 255, 0.032), transparent 58%),
       var(--surface);
-    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12);
+    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.18);
+    transition: border-color 180ms ease, transform 180ms ease;
+  }
+
+  .metric-card::before {
+    position: absolute;
+    top: 0;
+    right: 20px;
+    left: 20px;
+    height: 2px;
+    content: "";
+    background: linear-gradient(90deg, transparent, var(--metric-color), transparent);
+    opacity: 0.72;
+  }
+
+  .metric-card:hover {
+    border-color: color-mix(in srgb, var(--metric-color) 32%, transparent);
+    transform: translateY(-2px);
   }
 
   .metric-card__top {
@@ -50,7 +70,7 @@ const { label, value, detail, icon, tone = "cyan" } = Astro.props;
   }
 
   .metric-card p {
-    font-size: 0.72rem;
+    font-size: 0.73rem;
     font-weight: 650;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -81,7 +101,7 @@ const { label, value, detail, icon, tone = "cyan" } = Astro.props;
   .metric-card small {
     margin-top: auto;
     padding-top: 8px;
-    font-size: 0.72rem;
+    font-size: 0.73rem;
   }
 
   .metric-card--cyan {

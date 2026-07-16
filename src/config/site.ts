@@ -1,6 +1,6 @@
 export const siteConfig = {
-  title: "Game Wall",
-  description: "一座由 Steam 游玩时长与成就数据自动生成的个人游戏仪表盘。",
+  title: "vexpaer 游戏记录",
+  description: "vexpaer 的 Steam 游戏记录：游玩时长、最近活动与成就进度。",
   language: "zh-CN",
   timeZone: "Asia/Shanghai",
   repositoryUrl: "",

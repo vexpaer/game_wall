@@ -56,11 +56,7 @@ const ringSegments = achievementSegments.map((segment) => {
     <div class="dashboard">
       <section class="dashboard-hero" aria-labelledby="dashboard-title">
         <div class="dashboard-hero__copy">
-          <p class="section-kicker"><Icon name="spark" size={15} /> PERSONAL PLAY ARCHIVE</p>
-          <h1 id="dashboard-title">把每一次游玩，<br /><span>留在时间里。</span></h1>
-          <p class="dashboard-hero__lead">
-            从累计时长到成就进度，这里记录着一份持续生长的 Steam 游戏旅程。
-          </p>
+          <h1 id="dashboard-title"><span>vexpaer</span><br />游戏记录</h1>
           <div class="dashboard-hero__meta">
             <span><Icon name="calendar" size={16} /> 更新于 {formatDate(snapshot.generatedAt, true)}</span>
             <span><Icon name="grid" size={16} /> {snapshot.summary.playedGames} 款玩过的游戏</span>
@@ -242,12 +238,52 @@ const ringSegments = achievementSegments.map((segment) => {
           <button class="filter-reset" type="reset">重置</button>
         </form>
 
+        <fieldset class="library-view-settings" id="library-view-settings">
+          <legend>卡片显示设置</legend>
+          <div class="library-view-settings__controls">
+            <label class="view-toggle">
+              <input id="view-achievements" type="checkbox" checked aria-controls="library-grid" />
+              <span>显示成就</span>
+            </label>
+            <label class="view-toggle">
+              <input id="view-tags" type="checkbox" checked aria-controls="library-grid" />
+              <span>显示标签</span>
+            </label>
+            <label class="view-columns" for="view-columns">
+              <span>桌面每行</span>
+              <select id="view-columns" aria-controls="library-grid">
+                <option value="2">2 款</option>
+                <option value="3" selected>3 款</option>
+                <option value="4">4 款</option>
+                <option value="5">5 款</option>
+                <option value="6">6 款</option>
+              </select>
+            </label>
+            <label class="view-toggle view-toggle--clean">
+              <input id="view-clean" type="checkbox" aria-controls="library-grid" />
+              <span>纯净模式</span>
+              <small>只显示封面</small>
+            </label>
+            <button class="view-reset" id="view-reset" type="button">恢复默认</button>
+          </div>
+          <p class="library-view-settings__hint">设置会保存在当前浏览器；小屏幕会自动调整列数。</p>
+          <span class="sr-only" id="library-view-announcement" aria-live="polite"></span>
+        </fieldset>
+
         <div class="library-status">
           <p id="library-result-count" aria-live="polite">共 {games.length} 款游戏</p>
           <p>每次显示 {siteConfig.pageSize} 款</p>
         </div>
 
-        <div class="library-grid" id="library-grid" data-page-size={siteConfig.pageSize}>
+        <div
+          class="library-grid"
+          id="library-grid"
+          data-page-size={siteConfig.pageSize}
+          data-columns="3"
+          data-show-achievements="true"
+          data-show-tags="true"
+          data-clean="false"
+        >
           {libraryGames.map((game) => <GameCard game={game} href={gameHref(game)} />)}
         </div>
 
@@ -265,6 +301,14 @@ const ringSegments = achievementSegments.map((segment) => {
 </BaseLayout>
 
 <script>
+  import {
+    defaultLibraryPreferences,
+    normalizeLibraryPreferences,
+    parseStoredLibraryPreferences,
+    type LibraryPreferences
+  } from "../utils/library-preferences";
+
+  const libraryPreferencesKey = "game-wall:library-view:v1";
   const grid = document.querySelector<HTMLElement>("#library-grid");
   const form = document.querySelector<HTMLFormElement>("#game-filters");
 
@@ -277,12 +321,61 @@ const ringSegments = achievementSegments.map((segment) => {
     const loadMore = document.querySelector<HTMLButtonElement>("#load-more");
     const empty = document.querySelector<HTMLElement>("#library-empty");
     const count = document.querySelector<HTMLElement>("#library-result-count");
+    const viewAchievements = document.querySelector<HTMLInputElement>("#view-achievements");
+    const viewTags = document.querySelector<HTMLInputElement>("#view-tags");
+    const viewColumns = document.querySelector<HTMLSelectElement>("#view-columns");
+    const viewClean = document.querySelector<HTMLInputElement>("#view-clean");
+    const viewReset = document.querySelector<HTMLButtonElement>("#view-reset");
+    const viewAnnouncement = document.querySelector<HTMLElement>("#library-view-announcement");
     const cards = Array.from(grid.querySelectorAll<HTMLElement>("[data-game-card]"));
     const originalOrder = new Map(cards.map((card, index) => [card, index]));
     const pageSize = Number(grid.dataset.pageSize || 24);
     let visibleLimit = pageSize;
+    let preferences: LibraryPreferences = { ...defaultLibraryPreferences };
 
     const numberFrom = (card: HTMLElement, key: string) => Number(card.dataset[key] || 0);
+
+    const readPreferences = () => {
+      try {
+        return parseStoredLibraryPreferences(window.localStorage.getItem(libraryPreferencesKey));
+      } catch {
+        return { ...defaultLibraryPreferences };
+      }
+    };
+
+    const savePreferences = (value: LibraryPreferences) => {
+      try {
+        window.localStorage.setItem(libraryPreferencesKey, JSON.stringify(value));
+      } catch {
+        // Storage can be unavailable in strict privacy modes; the current view still works.
+      }
+    };
+
+    const applyPreferences = (value: unknown, persist = true, announce = true) => {
+      preferences = normalizeLibraryPreferences(value);
+      grid.dataset.columns = String(preferences.columns);
+      grid.dataset.showAchievements = String(preferences.showAchievements);
+      grid.dataset.showTags = String(preferences.showTags);
+      grid.dataset.clean = String(preferences.clean);
+
+      if (viewAchievements) {
+        viewAchievements.checked = preferences.showAchievements;
+        viewAchievements.disabled = preferences.clean;
+      }
+      if (viewTags) {
+        viewTags.checked = preferences.showTags;
+        viewTags.disabled = preferences.clean;
+      }
+      if (viewColumns) viewColumns.value = String(preferences.columns);
+      if (viewClean) viewClean.checked = preferences.clean;
+
+      if (persist) savePreferences(preferences);
+      if (announce && viewAnnouncement) {
+        viewAnnouncement.textContent = preferences.clean
+          ? `已启用纯净模式，桌面每行 ${preferences.columns} 款游戏。`
+          : `显示设置已更新，桌面每行 ${preferences.columns} 款游戏。`;
+      }
+    };
 
     const updateLibrary = (resetPage = false) => {
       if (resetPage) visibleLimit = pageSize;
@@ -320,15 +413,43 @@ const ringSegments = achievementSegments.map((segment) => {
         : `找到 ${matching.length} 款，已显示 ${shown} 款`;
       if (empty) empty.hidden = matching.length !== 0;
       if (loadMore) loadMore.hidden = matching.length <= visibleLimit;
+      return matching;
     };
 
     search?.addEventListener("input", () => updateLibrary(true));
     [genre, platform, achievement, sort].forEach((control) => control?.addEventListener("change", () => updateLibrary(true)));
+    form.addEventListener("submit", (event) => event.preventDefault());
     form.addEventListener("reset", () => window.setTimeout(() => updateLibrary(true), 0));
     loadMore?.addEventListener("click", () => {
+      const previouslyVisible = visibleLimit;
       visibleLimit += pageSize;
       updateLibrary();
+      if (loadMore.hidden) {
+        const visibleCards = Array.from(grid.querySelectorAll<HTMLElement>("[data-game-card]:not([hidden])"));
+        visibleCards[previouslyVisible]?.querySelector<HTMLAnchorElement>("a")?.focus();
+      }
     });
+
+    viewAchievements?.addEventListener("change", () => {
+      applyPreferences({ ...preferences, showAchievements: viewAchievements.checked });
+    });
+    viewTags?.addEventListener("change", () => {
+      applyPreferences({ ...preferences, showTags: viewTags.checked });
+    });
+    viewColumns?.addEventListener("change", () => {
+      applyPreferences({ ...preferences, columns: Number(viewColumns.value) });
+    });
+    viewClean?.addEventListener("change", () => {
+      applyPreferences({ ...preferences, clean: viewClean.checked });
+    });
+    viewReset?.addEventListener("click", () => applyPreferences(defaultLibraryPreferences));
+    window.addEventListener("storage", (event) => {
+      if (event.key === libraryPreferencesKey) {
+        applyPreferences(parseStoredLibraryPreferences(event.newValue), false);
+      }
+    });
+
+    applyPreferences(readPreferences(), false, false);
     updateLibrary();
   }
 </script>
