@@ -1,0 +1,84 @@
+---
+import Icon from "../components/Icon.astro";
+import BaseLayout from "../layouts/BaseLayout.astro";
+
+const base = import.meta.env.BASE_URL;
+---
+
+<BaseLayout title="页面未找到" description="这个页面已经离开了当前游戏世界。" noindex>
+  <section class="not-found" aria-labelledby="not-found-title">
+    <div class="not-found__code" aria-hidden="true">
+      <span>4</span><i><Icon name="gamepad" size={52} /></i><span>4</span>
+    </div>
+    <p class="section-kicker">OUT OF BOUNDS</p>
+    <h1 id="not-found-title">这里没有可加载的存档</h1>
+    <p>链接可能已经失效，或者这款游戏还没有出现在墙上。</p>
+    <a href={base}>返回游戏墙 <Icon name="arrow-left" size={17} /></a>
+  </section>
+</BaseLayout>
+
+<style>
+  .not-found {
+    min-height: 68vh;
+    padding: 72px 0 28px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .not-found__code {
+    display: flex;
+    align-items: center;
+    gap: clamp(8px, 3vw, 20px);
+    color: rgba(240, 247, 251, 0.86);
+    font-size: clamp(5rem, 20vw, 10rem);
+    font-weight: 800;
+    line-height: 0.9;
+    letter-spacing: -0.08em;
+  }
+
+  .not-found__code i {
+    width: clamp(78px, 15vw, 125px);
+    height: clamp(78px, 15vw, 125px);
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(86, 217, 237, 0.28);
+    border-radius: 30%;
+    color: var(--cyan);
+    background:
+      radial-gradient(circle, rgba(86, 217, 237, 0.15), transparent 68%),
+      var(--surface);
+    box-shadow: 0 0 60px rgba(86, 217, 237, 0.08);
+  }
+
+  .not-found .section-kicker {
+    margin-top: 38px;
+  }
+
+  .not-found h1 {
+    margin: 6px 0 0;
+    font-size: clamp(1.7rem, 5vw, 3rem);
+    letter-spacing: -0.04em;
+  }
+
+  .not-found > p:not(.section-kicker) {
+    margin: 14px 0 0;
+    color: var(--muted);
+  }
+
+  .not-found > a {
+    min-height: 45px;
+    margin-top: 30px;
+    padding: 9px 17px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border-radius: 10px;
+    color: #06121e;
+    background: var(--cyan);
+    font-size: 0.82rem;
+    font-weight: 700;
+  }
+</style>

@@ -1,0 +1,102 @@
+---
+import Icon from "./Icon.astro";
+
+interface Props {
+  label: string;
+  value: string | number;
+  detail: string;
+  icon: "clock" | "gamepad" | "spark" | "trophy";
+  tone?: "cyan" | "lime" | "amber" | "violet";
+}
+
+const { label, value, detail, icon, tone = "cyan" } = Astro.props;
+---
+
+<article class:list={["metric-card", `metric-card--${tone}`]}>
+  <div class="metric-card__top">
+    <p>{label}</p>
+    <span class="metric-card__icon" aria-hidden="true"><Icon name={icon} size={19} /></span>
+  </div>
+  <strong>{value}</strong>
+  <small>{detail}</small>
+</article>
+
+<style>
+  .metric-card {
+    min-width: 0;
+    min-height: 150px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background:
+      linear-gradient(145deg, rgba(255, 255, 255, 0.025), transparent 58%),
+      var(--surface);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12);
+  }
+
+  .metric-card__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .metric-card p,
+  .metric-card small {
+    margin: 0;
+    color: var(--muted);
+  }
+
+  .metric-card p {
+    font-size: 0.72rem;
+    font-weight: 650;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .metric-card__icon {
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    border-radius: 9px;
+    color: var(--metric-color);
+    background: color-mix(in srgb, var(--metric-color) 10%, transparent);
+  }
+
+  .metric-card strong {
+    margin-top: 15px;
+    overflow: hidden;
+    color: var(--text);
+    font-size: clamp(1.35rem, 2.2vw, 2rem);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.05;
+    letter-spacing: -0.04em;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .metric-card small {
+    margin-top: auto;
+    padding-top: 8px;
+    font-size: 0.72rem;
+  }
+
+  .metric-card--cyan {
+    --metric-color: var(--cyan);
+  }
+
+  .metric-card--lime {
+    --metric-color: var(--lime);
+  }
+
+  .metric-card--amber {
+    --metric-color: var(--amber);
+  }
+
+  .metric-card--violet {
+    --metric-color: var(--violet);
+  }
+</style>

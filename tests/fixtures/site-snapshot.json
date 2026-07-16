@@ -1,0 +1,126 @@
+{
+  "schemaVersion": 1,
+  "status": "ready",
+  "generatedAt": "2026-07-16T02:17:00.000Z",
+  "steamId": "76561198000000000",
+  "profile": {
+    "steamId": "76561198000000000",
+    "personaName": "Fixture Player",
+    "profileUrl": "https://steamcommunity.com/id/fixture-player/",
+    "avatarUrl": "https://avatars.steamstatic.com/fixture_full.jpg",
+    "lastLogoffAt": "2026-07-15T15:30:00.000Z"
+  },
+  "summary": {
+    "playedGames": 3,
+    "totalMinutes": 26542,
+    "recentMinutes": 300,
+    "unlockedAchievements": 56,
+    "totalAchievements": 62,
+    "achievementPercentage": 90.32,
+    "perfectGames": 1
+  },
+  "games": [
+    {
+      "appId": 570,
+      "name": "Dota 2",
+      "iconUrl": "https://media.steampowered.com/steamcommunity/public/images/apps/570/fixture570.jpg",
+      "storeUrl": "https://store.steampowered.com/app/570/",
+      "communityUrl": "https://steamcommunity.com/app/570/",
+      "lastPlayedAt": "2026-07-15T12:00:00.000Z",
+      "playtime": {
+        "foreverMinutes": 12345,
+        "recentMinutes": 90,
+        "windowsMinutes": 12000,
+        "linuxMinutes": 345,
+        "deckMinutes": 120
+      },
+      "achievements": {
+        "status": "none",
+        "unlocked": 0,
+        "total": 0,
+        "percentage": 0
+      },
+      "store": {
+        "type": "game",
+        "shortDescription": "每一天，全球数百万玩家都会操控上百名英雄之一加入战斗。",
+        "developers": ["Valve"],
+        "publishers": ["Valve"],
+        "genres": ["动作", "免费开玩", "策略"],
+        "releaseDate": "2013 年 7 月 9 日",
+        "platforms": ["windows", "mac", "linux"],
+        "headerImageUrl": "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/570/header.jpg",
+        "backgroundImageUrl": "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/570/page_bg_raw.jpg",
+        "screenshots": [
+          "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/570/ss_fixture_1.jpg",
+          "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/570/ss_fixture_2.jpg"
+        ]
+      }
+    },
+    {
+      "appId": 730,
+      "name": "Counter-Strike 2",
+      "iconUrl": "https://media.steampowered.com/steamcommunity/public/images/apps/730/fixture730.jpg",
+      "storeUrl": "https://store.steampowered.com/app/730/",
+      "communityUrl": "https://steamcommunity.com/app/730/",
+      "lastPlayedAt": "2026-06-20T09:20:00.000Z",
+      "playtime": {
+        "foreverMinutes": 5432,
+        "recentMinutes": 0,
+        "windowsMinutes": 5432
+      },
+      "achievements": {
+        "status": "available",
+        "unlocked": 14,
+        "total": 20,
+        "percentage": 70
+      },
+      "store": {
+        "type": "game",
+        "shortDescription": "全球精英玩家共同塑造的竞技体验。",
+        "developers": ["Valve"],
+        "publishers": ["Valve"],
+        "genres": ["动作", "免费开玩"],
+        "releaseDate": "2023 年 8 月 21 日",
+        "platforms": ["windows", "linux"],
+        "headerImageUrl": "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/730/header.jpg",
+        "screenshots": []
+      }
+    },
+    {
+      "appId": 1245620,
+      "name": "ELDEN RING",
+      "iconUrl": "https://media.steampowered.com/steamcommunity/public/images/apps/1245620/fixture1245620.jpg",
+      "storeUrl": "https://store.steampowered.com/app/1245620/",
+      "communityUrl": "https://steamcommunity.com/app/1245620/",
+      "lastPlayedAt": "2026-07-14T20:45:00.000Z",
+      "playtime": {
+        "foreverMinutes": 8765,
+        "recentMinutes": 210,
+        "windowsMinutes": 8400,
+        "deckMinutes": 365
+      },
+      "achievements": {
+        "status": "available",
+        "unlocked": 42,
+        "total": 42,
+        "percentage": 100
+      },
+      "store": {
+        "type": "game",
+        "shortDescription": "以正统黑暗奇幻世界为舞台的动作角色扮演游戏。",
+        "developers": ["FromSoftware, Inc."],
+        "publishers": ["FromSoftware, Inc.", "Bandai Namco Entertainment"],
+        "genres": ["动作", "角色扮演"],
+        "releaseDate": "2022 年 2 月 25 日",
+        "platforms": ["windows"],
+        "headerImageUrl": "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1245620/header.jpg",
+        "backgroundImageUrl": "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1245620/page_bg_raw.jpg",
+        "screenshots": [
+          "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1245620/ss_fixture_1.jpg",
+          "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1245620/ss_fixture_2.jpg",
+          "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1245620/ss_fixture_3.jpg"
+        ]
+      }
+    }
+  ]
+}

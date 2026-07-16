@@ -1,0 +1,32 @@
+{
+  "name": "game-wall",
+  "type": "module",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A Steam-powered personal game dashboard built with Astro",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "dev:fixture": "npm run data:fixture && astro dev",
+    "build": "npm run data:validate && astro build",
+    "build:fixture": "npm run data:fixture && npm run build",
+    "preview": "astro preview",
+    "steam:sync": "tsx scripts/sync-steam.ts",
+    "data:fixture": "tsx scripts/prepare-fixture.ts",
+    "data:validate": "tsx scripts/validate-snapshot.ts",
+    "test": "tsx --test tests/*.test.ts",
+    "check": "astro check && tsc --noEmit",
+    "ci": "npm test && npm run data:fixture && npm run check && npm run build"
+  },
+  "dependencies": {
+    "@astrojs/sitemap": "^3.7.3",
+    "astro": "^7.0.7"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.9",
+    "tsx": "^4.23.0",
+    "typescript": "^6.0.3"
+  }
+}

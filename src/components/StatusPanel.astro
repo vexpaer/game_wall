@@ -1,0 +1,131 @@
+---
+import type { SiteSnapshot } from "../types/steam";
+import { formatDate } from "../utils/format";
+import Icon from "./Icon.astro";
+
+interface Props {
+  snapshot: SiteSnapshot;
+}
+
+const { snapshot } = Astro.props;
+const isPrivate = snapshot.status === "private";
+const title = isPrivate ? "游戏资料未公开" : "还没有可展示的游戏";
+const description = isPrivate
+  ? "Steam 返回了有效的空游戏库。请将“游戏详情”设为公开，并确认没有勾选隐藏总游戏时长。"
+  : "这个 Steam 账户的公开游戏库中，暂时没有游玩时长大于 0 的游戏。";
+---
+
+<section class="status-page" aria-labelledby="status-title">
+  <div class="status-panel">
+    <span class="status-panel__icon" aria-hidden="true"><Icon name={isPrivate ? "user" : "gamepad"} size={34} /></span>
+    <p class="section-kicker">STEAM LIBRARY STATUS</p>
+    <h1 id="status-title">{title}</h1>
+    <p class="status-panel__description">{description}</p>
+    <div class="status-panel__actions">
+      {snapshot.profile?.profileUrl && (
+        <a class="button button--primary" href={snapshot.profile.profileUrl} target="_blank" rel="noreferrer">
+          查看 Steam 资料 <Icon name="arrow-up-right" size={17} />
+        </a>
+      )}
+      <a class="button" href="https://help.steampowered.com/zh-cn/faqs/view/1150-C06F-4D62-4966" target="_blank" rel="noreferrer">
+        隐私设置帮助 <Icon name="arrow-up-right" size={17} />
+      </a>
+    </div>
+    <p class="status-panel__time">数据检查于 {formatDate(snapshot.generatedAt, true)}</p>
+  </div>
+</section>
+
+<style>
+  .status-page {
+    min-height: 66vh;
+    padding: 76px 0 24px;
+    display: grid;
+    place-items: center;
+  }
+
+  .status-panel {
+    width: min(680px, 100%);
+    padding: clamp(32px, 7vw, 64px);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    text-align: center;
+    background:
+      radial-gradient(circle at 50% 0, rgba(86, 217, 237, 0.12), transparent 17rem),
+      var(--surface);
+    box-shadow: var(--shadow);
+  }
+
+  .status-panel__icon {
+    width: 70px;
+    height: 70px;
+    margin: 0 auto 24px;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(86, 217, 237, 0.28);
+    border-radius: 20px;
+    color: var(--cyan);
+    background: rgba(86, 217, 237, 0.07);
+  }
+
+  .status-panel .section-kicker {
+    justify-content: center;
+  }
+
+  .status-panel h1 {
+    margin: 10px 0 0;
+    font-size: clamp(1.8rem, 5vw, 3rem);
+    line-height: 1.16;
+    letter-spacing: -0.04em;
+  }
+
+  .status-panel__description {
+    max-width: 500px;
+    margin: 18px auto 0;
+    color: var(--muted-strong);
+  }
+
+  .status-panel__actions {
+    margin-top: 30px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  .button {
+    min-height: 44px;
+    padding: 9px 15px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 1px solid var(--line-strong);
+    border-radius: 10px;
+    color: var(--muted-strong);
+    font-size: 0.82rem;
+    font-weight: 650;
+  }
+
+  .button--primary {
+    border-color: transparent;
+    color: #06121e;
+    background: var(--cyan);
+  }
+
+  .status-panel__time {
+    margin: 28px 0 0;
+    color: var(--muted);
+    font-size: 0.7rem;
+  }
+
+  @media (max-width: 500px) {
+    .status-page {
+      padding-top: 48px;
+    }
+
+    .status-panel__actions,
+    .button {
+      width: 100%;
+    }
+  }
+</style>

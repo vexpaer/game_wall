@@ -1,0 +1,89 @@
+---
+import type { AchievementSummary } from "../types/steam";
+import { clampPercentage } from "../utils/format";
+
+interface Props {
+  achievements: AchievementSummary;
+  compact?: boolean;
+}
+
+const { achievements, compact = false } = Astro.props;
+const percentage = clampPercentage(achievements.percentage);
+const isPerfect = achievements.status === "available" && achievements.total > 0 && percentage >= 100;
+const label =
+  achievements.status === "none"
+    ? "无 Steam 成就"
+    : achievements.status === "unavailable"
+      ? "成就暂不可用"
+      : isPerfect
+        ? `全成就 · ${achievements.unlocked}/${achievements.total}`
+        : `已解锁 ${achievements.unlocked} / ${achievements.total}`;
+---
+
+<div class:list={["achievement", compact && "achievement--compact", isPerfect && "achievement--perfect"]}>
+  <div class="achievement__row">
+    <span>{label}</span>
+    {achievements.status === "available" && <span class="achievement__percent">{Math.round(percentage)}%</span>}
+  </div>
+  {achievements.status === "available" && (
+    <div
+      class="achievement__track"
+      role="progressbar"
+      aria-label={`成就完成率 ${Math.round(percentage)}%`}
+      aria-valuemin="0"
+      aria-valuemax="100"
+      aria-valuenow={Math.round(percentage)}
+    >
+      <span style={`width: ${percentage}%`}></span>
+    </div>
+  )}
+</div>
+
+<style>
+  .achievement {
+    width: 100%;
+  }
+
+  .achievement__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    color: var(--muted-strong);
+    font-size: 0.73rem;
+  }
+
+  .achievement__percent {
+    color: var(--cyan);
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+  }
+
+  .achievement__track {
+    height: 4px;
+    margin-top: 8px;
+    overflow: hidden;
+    border-radius: 99px;
+    background: rgba(135, 171, 195, 0.12);
+  }
+
+  .achievement__track span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--cyan-strong), var(--cyan));
+  }
+
+  .achievement--perfect .achievement__row,
+  .achievement--perfect .achievement__percent {
+    color: var(--lime);
+  }
+
+  .achievement--perfect .achievement__track span {
+    background: linear-gradient(90deg, #6dcf50, var(--lime));
+  }
+
+  .achievement--compact .achievement__row {
+    font-size: 0.68rem;
+  }
+</style>

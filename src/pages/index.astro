@@ -1,0 +1,334 @@
+---
+import AchievementBadge from "../components/AchievementBadge.astro";
+import GameCard from "../components/GameCard.astro";
+import Icon from "../components/Icon.astro";
+import MetricCard from "../components/MetricCard.astro";
+import StatusPanel from "../components/StatusPanel.astro";
+import { siteConfig } from "../config/site";
+import BaseLayout from "../layouts/BaseLayout.astro";
+import "../styles/dashboard.css";
+import type { SteamGame } from "../types/steam";
+import { clampPercentage, formatDate, formatDuration } from "../utils/format";
+import { getSnapshot } from "../utils/snapshot";
+
+const snapshot = getSnapshot();
+const base = import.meta.env.BASE_URL;
+const gameHref = (game: SteamGame) => `${base}games/${game.appId}/`;
+const isReady = snapshot.status === "ready" && snapshot.games.length > 0;
+const games = [...snapshot.games];
+const profile = snapshot.profile;
+const libraryGames = [...games].sort((a, b) => {
+  const dateDifference = (Date.parse(b.lastPlayedAt ?? "") || 0) - (Date.parse(a.lastPlayedAt ?? "") || 0);
+  return dateDifference || b.playtime.foreverMinutes - a.playtime.foreverMinutes;
+});
+const recentGames = libraryGames.slice(0, 4);
+const topGames = [...games].sort((a, b) => b.playtime.foreverMinutes - a.playtime.foreverMinutes).slice(0, 6);
+const maximumPlaytime = topGames[0]?.playtime.foreverMinutes ?? 1;
+const genres = [...new Set(games.flatMap((game) => game.store.genres))].sort((a, b) => a.localeCompare(b, "zh-CN"));
+const availablePlatforms = ["windows", "mac", "linux"].filter((platform) =>
+  games.some((game) => game.store.platforms.includes(platform))
+);
+const platformNames: Record<string, string> = { windows: "Windows", mac: "macOS", linux: "Linux" };
+
+const achievementCounts = {
+  perfect: games.filter((game) => game.achievements.status === "available" && game.achievements.total > 0 && game.achievements.percentage >= 100).length,
+  progress: games.filter((game) => game.achievements.status === "available" && game.achievements.unlocked > 0 && game.achievements.percentage < 100).length,
+  untouched: games.filter((game) => game.achievements.status === "available" && game.achievements.unlocked === 0).length,
+  other: games.filter((game) => game.achievements.status !== "available").length
+};
+const achievementSegments = [
+  { key: "perfect", label: "全成就", count: achievementCounts.perfect, color: "lime" },
+  { key: "progress", label: "进行中", count: achievementCounts.progress, color: "cyan" },
+  { key: "untouched", label: "尚未解锁", count: achievementCounts.untouched, color: "violet" },
+  { key: "other", label: "无成就 / 暂不可用", count: achievementCounts.other, color: "muted" }
+];
+let ringOffset = 0;
+const ringSegments = achievementSegments.map((segment) => {
+  const percentage = games.length > 0 ? (segment.count / games.length) * 100 : 0;
+  const result = { ...segment, percentage, offset: -ringOffset };
+  ringOffset += percentage;
+  return result;
+});
+---
+
+<BaseLayout>
+  {isReady ? (
+    <div class="dashboard">
+      <section class="dashboard-hero" aria-labelledby="dashboard-title">
+        <div class="dashboard-hero__copy">
+          <p class="section-kicker"><Icon name="spark" size={15} /> PERSONAL PLAY ARCHIVE</p>
+          <h1 id="dashboard-title">把每一次游玩，<br /><span>留在时间里。</span></h1>
+          <p class="dashboard-hero__lead">
+            从累计时长到成就进度，这里记录着一份持续生长的 Steam 游戏旅程。
+          </p>
+          <div class="dashboard-hero__meta">
+            <span><Icon name="calendar" size={16} /> 更新于 {formatDate(snapshot.generatedAt, true)}</span>
+            <span><Icon name="grid" size={16} /> {snapshot.summary.playedGames} 款玩过的游戏</span>
+          </div>
+        </div>
+
+        <aside class="profile-card" aria-label="Steam 玩家资料">
+          <div class="profile-card__scanline" aria-hidden="true"></div>
+          <div class="profile-card__top">
+            {profile?.avatarUrl ? (
+              <img src={profile.avatarUrl} width="96" height="96" alt={`${profile.personaName} 的 Steam 头像`} />
+            ) : (
+              <span class="profile-card__fallback" aria-hidden="true"><Icon name="user" size={32} /></span>
+            )}
+            <div>
+              <span class="profile-card__eyebrow"><i aria-hidden="true"></i> PUBLIC PROFILE</span>
+              <h2>{profile?.personaName ?? `Steam 玩家 ${snapshot.steamId}`}</h2>
+              <p>Steam ID · {snapshot.steamId}</p>
+            </div>
+          </div>
+          <div class="profile-card__stats">
+            <div><strong>{formatDuration(snapshot.summary.recentMinutes)}</strong><span>近两周</span></div>
+            <div><strong>{snapshot.summary.perfectGames}</strong><span>全成就游戏</span></div>
+          </div>
+          {profile?.profileUrl && (
+            <a class="profile-card__link" href={profile.profileUrl} target="_blank" rel="noreferrer">
+              打开 Steam 个人资料 <Icon name="arrow-up-right" size={17} />
+            </a>
+          )}
+        </aside>
+      </section>
+
+      <section class="metrics" aria-label="游戏数据概览">
+        <MetricCard label="玩过的游戏" value={snapshot.summary.playedGames} detail="已过滤零时长游戏" icon="gamepad" tone="cyan" />
+        <MetricCard label="累计游戏时间" value={formatDuration(snapshot.summary.totalMinutes)} detail="全部游戏累计" icon="clock" tone="violet" />
+        <MetricCard label="近两周游戏时间" value={formatDuration(snapshot.summary.recentMinutes)} detail="Steam 近期活动" icon="spark" tone="lime" />
+        <MetricCard label="加权成就完成率" value={`${Math.round(clampPercentage(snapshot.summary.achievementPercentage))}%`} detail={`${snapshot.summary.unlockedAchievements} / ${snapshot.summary.totalAchievements} 项`} icon="trophy" tone="amber" />
+        <MetricCard label="全成就游戏" value={snapshot.summary.perfectGames} detail="已完成全部 Steam 成就" icon="trophy" tone="lime" />
+      </section>
+
+      <section class="page-section" aria-labelledby="recent-title">
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker"><Icon name="clock" size={15} /> RECENTLY PLAYED</p>
+            <h2 id="recent-title">最近游玩</h2>
+            <p class="section-description">按最后运行时间排列，回到旅程刚刚停下的地方。</p>
+          </div>
+          <a class="text-link" href={`${base}#game-library`}>查看完整游戏库 <Icon name="arrow-up-right" size={16} /></a>
+        </div>
+        <div class="recent-grid">
+          {recentGames.map((game) => <GameCard game={game} href={gameHref(game)} eager />)}
+        </div>
+      </section>
+
+      <section class="page-section insights-grid" aria-label="游戏数据洞察">
+        <article class="insight-panel playtime-ranking">
+          <div class="insight-panel__heading">
+            <div>
+              <p class="section-kicker"><Icon name="clock" size={15} /> PLAYTIME RANKING</p>
+              <h2>时长排行</h2>
+            </div>
+            <span>TOP {topGames.length}</span>
+          </div>
+          <ol class="ranking-list">
+            {topGames.map((game, index) => (
+              <li>
+                <span class="ranking-list__number">{String(index + 1).padStart(2, "0")}</span>
+                <div class="ranking-list__game">
+                  <div>
+                    <a href={gameHref(game)}>{game.name}</a>
+                    <span>{formatDuration(game.playtime.foreverMinutes)}</span>
+                  </div>
+                  <div class="ranking-list__track" aria-hidden="true">
+                    <span style={`width: ${(game.playtime.foreverMinutes / maximumPlaytime) * 100}%`}></span>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </article>
+
+        <article class="insight-panel achievement-panel">
+          <div class="insight-panel__heading">
+            <div>
+              <p class="section-kicker"><Icon name="trophy" size={15} /> ACHIEVEMENTS</p>
+              <h2>成就分布</h2>
+            </div>
+          </div>
+          <div class="achievement-chart">
+            <div class="achievement-chart__ring">
+              <svg viewBox="0 0 42 42" aria-hidden="true">
+                <circle class="achievement-chart__base" cx="21" cy="21" r="15.9155" pathLength="100"></circle>
+                {ringSegments.map((segment) => segment.percentage > 0 && (
+                  <circle
+                    class={`achievement-chart__segment achievement-chart__segment--${segment.color}`}
+                    cx="21"
+                    cy="21"
+                    r="15.9155"
+                    pathLength="100"
+                    stroke-dasharray={`${segment.percentage} ${100 - segment.percentage}`}
+                    stroke-dashoffset={segment.offset}
+                  ></circle>
+                ))}
+              </svg>
+              <div><strong>{games.length}</strong><span>款游戏</span></div>
+            </div>
+            <ul class="achievement-chart__legend">
+              {achievementSegments.map((segment) => (
+                <li>
+                  <span class={`legend-dot legend-dot--${segment.color}`} aria-hidden="true"></span>
+                  <span>{segment.label}</span>
+                  <strong>{segment.count}</strong>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div class="achievement-panel__summary">
+            <span>全部可用成就</span>
+            <AchievementBadge achievements={{
+              status: snapshot.summary.totalAchievements > 0 ? "available" : "none",
+              unlocked: snapshot.summary.unlockedAchievements,
+              total: snapshot.summary.totalAchievements,
+              percentage: snapshot.summary.achievementPercentage
+            }} />
+          </div>
+        </article>
+      </section>
+
+      <section class="page-section library-section" id="game-library" aria-labelledby="library-title">
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker"><Icon name="grid" size={15} /> ALL GAMES</p>
+            <h2 id="library-title">完整游戏库</h2>
+            <p class="section-description">搜索、筛选并重新排列这份游玩记录。</p>
+          </div>
+          <span class="library-total">{games.length} GAMES</span>
+        </div>
+
+        <form class="filter-panel" id="game-filters" aria-label="筛选游戏" novalidate>
+          <label class="filter-search" for="game-search">
+            <span class="sr-only">搜索游戏名称、类型或开发商</span>
+            <Icon name="search" size={18} />
+            <input id="game-search" type="search" autocomplete="off" placeholder="搜索游戏、类型或开发商…" />
+          </label>
+          <label class="filter-control" for="genre-filter">
+            <span>类型</span>
+            <select id="genre-filter">
+              <option value="">全部类型</option>
+              {genres.map((genre) => <option value={genre.toLocaleLowerCase("zh-CN")}>{genre}</option>)}
+            </select>
+          </label>
+          <label class="filter-control" for="platform-filter">
+            <span>平台</span>
+            <select id="platform-filter">
+              <option value="">全部平台</option>
+              {availablePlatforms.map((platform) => <option value={platform}>{platformNames[platform]}</option>)}
+            </select>
+          </label>
+          <label class="filter-control" for="achievement-filter">
+            <span>成就</span>
+            <select id="achievement-filter">
+              <option value="">全部状态</option>
+              <option value="perfect">全成就</option>
+              <option value="progress">进行中</option>
+              <option value="untouched">尚未解锁</option>
+              <option value="none">无 Steam 成就</option>
+              <option value="unavailable">暂不可用</option>
+            </select>
+          </label>
+          <label class="filter-control" for="sort-games">
+            <span>排序</span>
+            <select id="sort-games">
+              <option value="recent">最近游玩</option>
+              <option value="playtime">累计时长</option>
+              <option value="completion">成就完成率</option>
+              <option value="name">游戏名称</option>
+            </select>
+          </label>
+          <button class="filter-reset" type="reset">重置</button>
+        </form>
+
+        <div class="library-status">
+          <p id="library-result-count" aria-live="polite">共 {games.length} 款游戏</p>
+          <p>每次显示 {siteConfig.pageSize} 款</p>
+        </div>
+
+        <div class="library-grid" id="library-grid" data-page-size={siteConfig.pageSize}>
+          {libraryGames.map((game) => <GameCard game={game} href={gameHref(game)} />)}
+        </div>
+
+        <div class="library-empty" id="library-empty" hidden>
+          <Icon name="search" size={26} />
+          <strong>没有找到匹配的游戏</strong>
+          <span>换个关键词或减少筛选条件试试。</span>
+        </div>
+        <button class="load-more" id="load-more" type="button" hidden>显示更多游戏 <span aria-hidden="true">↓</span></button>
+      </section>
+    </div>
+  ) : (
+    <StatusPanel snapshot={snapshot} />
+  )}
+</BaseLayout>
+
+<script>
+  const grid = document.querySelector<HTMLElement>("#library-grid");
+  const form = document.querySelector<HTMLFormElement>("#game-filters");
+
+  if (grid && form) {
+    const search = form.querySelector<HTMLInputElement>("#game-search");
+    const genre = form.querySelector<HTMLSelectElement>("#genre-filter");
+    const platform = form.querySelector<HTMLSelectElement>("#platform-filter");
+    const achievement = form.querySelector<HTMLSelectElement>("#achievement-filter");
+    const sort = form.querySelector<HTMLSelectElement>("#sort-games");
+    const loadMore = document.querySelector<HTMLButtonElement>("#load-more");
+    const empty = document.querySelector<HTMLElement>("#library-empty");
+    const count = document.querySelector<HTMLElement>("#library-result-count");
+    const cards = Array.from(grid.querySelectorAll<HTMLElement>("[data-game-card]"));
+    const originalOrder = new Map(cards.map((card, index) => [card, index]));
+    const pageSize = Number(grid.dataset.pageSize || 24);
+    let visibleLimit = pageSize;
+
+    const numberFrom = (card: HTMLElement, key: string) => Number(card.dataset[key] || 0);
+
+    const updateLibrary = (resetPage = false) => {
+      if (resetPage) visibleLimit = pageSize;
+      const query = search?.value.trim().toLocaleLowerCase("zh-CN") ?? "";
+      const selectedGenre = genre?.value ?? "";
+      const selectedPlatform = platform?.value ?? "";
+      const selectedAchievement = achievement?.value ?? "";
+      const selectedSort = sort?.value ?? "recent";
+
+      const matching = cards.filter((card) => {
+        const matchesSearch = !query || (card.dataset.search ?? "").includes(query);
+        const matchesGenre = !selectedGenre || (card.dataset.genres ?? "").split("|").includes(selectedGenre);
+        const matchesPlatform = !selectedPlatform || (card.dataset.platforms ?? "").split(" ").includes(selectedPlatform);
+        const matchesAchievement = !selectedAchievement || card.dataset.achievement === selectedAchievement;
+        return matchesSearch && matchesGenre && matchesPlatform && matchesAchievement;
+      });
+
+      matching.sort((a, b) => {
+        if (selectedSort === "playtime") return numberFrom(b, "playtime") - numberFrom(a, "playtime");
+        if (selectedSort === "completion") return numberFrom(b, "completion") - numberFrom(a, "completion");
+        if (selectedSort === "name") return (a.dataset.name ?? "").localeCompare(b.dataset.name ?? "", "zh-CN");
+        const recentDifference = numberFrom(b, "lastPlayed") - numberFrom(a, "lastPlayed");
+        return recentDifference || (originalOrder.get(a) ?? 0) - (originalOrder.get(b) ?? 0);
+      });
+
+      const matchingSet = new Set(matching);
+      matching.forEach((card) => grid.append(card));
+      cards.filter((card) => !matchingSet.has(card)).forEach((card) => grid.append(card));
+      matching.forEach((card, index) => { card.hidden = index >= visibleLimit; });
+      cards.filter((card) => !matchingSet.has(card)).forEach((card) => { card.hidden = true; });
+
+      const shown = Math.min(matching.length, visibleLimit);
+      if (count) count.textContent = matching.length === cards.length
+        ? `显示 ${shown} / ${cards.length} 款游戏`
+        : `找到 ${matching.length} 款，已显示 ${shown} 款`;
+      if (empty) empty.hidden = matching.length !== 0;
+      if (loadMore) loadMore.hidden = matching.length <= visibleLimit;
+    };
+
+    search?.addEventListener("input", () => updateLibrary(true));
+    [genre, platform, achievement, sort].forEach((control) => control?.addEventListener("change", () => updateLibrary(true)));
+    form.addEventListener("reset", () => window.setTimeout(() => updateLibrary(true), 0));
+    loadMore?.addEventListener("click", () => {
+      visibleLimit += pageSize;
+      updateLibrary();
+    });
+    updateLibrary();
+  }
+</script>

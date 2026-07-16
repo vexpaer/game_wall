@@ -1,0 +1,47 @@
+---
+interface Props {
+  name:
+    | "arrow-left"
+    | "arrow-up-right"
+    | "calendar"
+    | "check"
+    | "clock"
+    | "gamepad"
+    | "grid"
+    | "search"
+    | "spark"
+    | "trophy"
+    | "user";
+  size?: number;
+  label?: string;
+}
+
+const { name, size = 20, label } = Astro.props;
+---
+
+<svg
+  class="icon"
+  width={size}
+  height={size}
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="1.8"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+  aria-hidden={label ? undefined : "true"}
+  role={label ? "img" : undefined}
+>
+  {label && <title>{label}</title>}
+  {name === "arrow-left" && <><path d="m15 18-6-6 6-6"></path><path d="M9 12h11"></path></>}
+  {name === "arrow-up-right" && <><path d="M7 17 17 7"></path><path d="M7 7h10v10"></path></>}
+  {name === "calendar" && <><rect x="3" y="5" width="18" height="16" rx="3"></rect><path d="M16 3v4M8 3v4M3 10h18"></path></>}
+  {name === "check" && <><path d="m5 12 4 4L19 6"></path></>}
+  {name === "clock" && <><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></>}
+  {name === "gamepad" && <><path d="M8.5 7h7a5 5 0 0 1 4.7 3.3l1.2 3.6a3.2 3.2 0 0 1-5.1 3.5L14.7 16H9.3l-1.6 1.4a3.2 3.2 0 0 1-5.1-3.5l1.2-3.6A5 5 0 0 1 8.5 7Z"></path><path d="M7 11v4M5 13h4M16.5 12h.01M18.5 14h.01"></path></>}
+  {name === "grid" && <><rect x="3" y="3" width="7" height="7" rx="2"></rect><rect x="14" y="3" width="7" height="7" rx="2"></rect><rect x="3" y="14" width="7" height="7" rx="2"></rect><rect x="14" y="14" width="7" height="7" rx="2"></rect></>}
+  {name === "search" && <><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></>}
+  {name === "spark" && <><path d="m12 3 1.3 4.2a5 5 0 0 0 3.5 3.5L21 12l-4.2 1.3a5 5 0 0 0-3.5 3.5L12 21l-1.3-4.2a5 5 0 0 0-3.5-3.5L3 12l4.2-1.3a5 5 0 0 0 3.5-3.5L12 3Z"></path></>}
+  {name === "trophy" && <><path d="M8 4h8v4a4 4 0 0 1-8 0V4Z"></path><path d="M8 6H5v1a4 4 0 0 0 4 4M16 6h3v1a4 4 0 0 1-4 4M12 12v5M8 21h8M9 17h6"></path></>}
+  {name === "user" && <><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></>}
+</svg>

@@ -1,0 +1,83 @@
+---
+import Icon from "../components/Icon.astro";
+import { siteConfig } from "../config/site";
+import "../styles/global.css";
+
+interface Props {
+  title?: string;
+  description?: string;
+  image?: string | undefined;
+  noindex?: boolean;
+}
+
+const {
+  title = siteConfig.title,
+  description = siteConfig.description,
+  image,
+  noindex = false
+} = Astro.props;
+const documentTitle = title === siteConfig.title ? title : `${title} · ${siteConfig.title}`;
+const base = import.meta.env.BASE_URL;
+const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site) : Astro.url;
+const homeHref = base;
+const libraryHref = `${base}#game-library`;
+const dataHref = `${base}#data-note`;
+const faviconHref = `${base}favicon.svg`;
+---
+
+<!doctype html>
+<html lang={siteConfig.language}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="generator" content={Astro.generator} />
+    <meta name="theme-color" content="#07111f" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="description" content={description} />
+    {noindex && <meta name="robots" content="noindex" />}
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={documentTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    {image && <meta property="og:image" content={image} />}
+    <meta name="twitter:card" content={image ? "summary_large_image" : "summary"} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" href={faviconHref} type="image/svg+xml" />
+    <title>{documentTitle}</title>
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">跳到主要内容</a>
+    <div class="site-shell">
+      <header class="site-header">
+        <a class="brand" href={homeHref} aria-label="Game Wall 首页">
+          <span class="brand-mark" aria-hidden="true"><Icon name="gamepad" size={22} /></span>
+          <span class="brand-copy">
+            <strong>GAME WALL</strong>
+            <small>STEAM PLAY ARCHIVE</small>
+          </span>
+        </a>
+        <nav class="site-nav" aria-label="主要导航">
+          <a href={homeHref}>概览</a>
+          <a href={libraryHref}>游戏库</a>
+          <a href={dataHref}>关于数据</a>
+        </nav>
+        <span class="live-badge"><span aria-hidden="true"></span> Steam 数据驱动</span>
+      </header>
+
+      <main id="main-content">
+        <slot />
+      </main>
+
+      <footer class="site-footer" id="data-note">
+        <div class="footer-brand">
+          <span class="brand-mark brand-mark--small" aria-hidden="true"><Icon name="gamepad" size={18} /></span>
+          <div>
+            <strong>Game Wall</strong>
+            <p>把游戏时间，变成一段可回望的旅程。</p>
+          </div>
+        </div>
+        <p class="data-note">数据来自 Steam。本站与 Valve Corporation 无隶属或背书关系。</p>
+      </footer>
+    </div>
+  </body>
+</html>

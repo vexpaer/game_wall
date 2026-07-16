@@ -1,0 +1,47 @@
+name: Pull Request CI
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Test fixture build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Prepare deterministic fixture
+        run: npm run data:fixture
+
+      - name: Validate fixture snapshot
+        run: npm run data:validate
+
+      - name: Check Astro and TypeScript
+        run: npm run check
+
+      - name: Build with the project Pages base path
+        env:
+          SITE_URL: https://example.github.io
+          BASE_PATH: /game_wall
+        run: npm run build

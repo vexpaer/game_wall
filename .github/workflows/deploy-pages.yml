@@ -1,0 +1,95 @@
+name: Deploy Game Wall
+
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Sync and build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test data pipeline
+        run: npm test
+
+      - name: Create weekly store-cache key
+        id: store-cache-key
+        shell: bash
+        run: echo "week=$(date -u +'%G-%V')" >> "$GITHUB_OUTPUT"
+
+      - name: Restore public Steam Store metadata
+        uses: actions/cache@v6
+        with:
+          path: data/cache/store
+          key: steam-store-v1-${{ runner.os }}-${{ vars.STEAM_LANGUAGE || 'schinese' }}-${{ steps.store-cache-key.outputs.week }}
+          restore-keys: |
+            steam-store-v1-${{ runner.os }}-${{ vars.STEAM_LANGUAGE || 'schinese' }}-
+
+      - name: Fetch Steam data
+        env:
+          STEAM_API_KEY: ${{ secrets.STEAM_API_KEY }}
+          STEAM_USER: ${{ vars.STEAM_USER }}
+          STEAM_LANGUAGE: ${{ vars.STEAM_LANGUAGE || 'schinese' }}
+          STEAM_STORE_CACHE_DIR: data/cache/store
+          STEAM_STORE_CACHE_TTL_MS: "604800000"
+        run: npm run steam:sync
+
+      - name: Validate generated snapshot
+        run: npm run data:validate
+
+      - name: Check Astro and TypeScript
+        run: npm run check
+
+      - name: Configure GitHub Pages
+        id: pages
+        uses: actions/configure-pages@v6
+
+      - name: Build static site
+        env:
+          SITE_URL: ${{ steps.pages.outputs.origin }}
+          BASE_PATH: ${{ steps.pages.outputs.base_path }}
+        run: npm run build
+
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist
+
+  deploy:
+    name: Deploy
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
