@@ -483,35 +483,6 @@ select {
   will-change: transform;
 }
 
-.cursor-aura {
-  position: fixed;
-  top: -22px;
-  left: -22px;
-  z-index: 900;
-  width: 44px;
-  height: 44px;
-  pointer-events: none;
-  opacity: 0;
-  border: 1px solid rgba(95, 245, 255, 0.48);
-  border-radius: 50%;
-  background: rgba(95, 245, 255, 0.045);
-  box-shadow: 0 0 24px rgba(95, 245, 255, 0.14), inset 0 0 14px rgba(255, 78, 205, 0.08);
-  mix-blend-mode: screen;
-  will-change: transform;
-}
-
-.cursor-aura i {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--pink);
-  box-shadow: 0 0 10px var(--pink);
-  transform: translate(-50%, -50%);
-}
-
 .boot-screen {
   position: fixed;
   inset: 0;
@@ -679,8 +650,7 @@ select {
     transition-duration: 0.01ms !important;
   }
 
-  .ambient-orb,
-  .cursor-aura {
+  .ambient-orb {
     display: none;
   }
 }

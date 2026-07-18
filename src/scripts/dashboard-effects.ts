@@ -342,32 +342,7 @@ export const initDashboardEffects = () => {
 
       const cleanups: Array<() => void> = [];
       if (finePointer) {
-        if (profileCard) cleanups.push(createTilt(profileCard, 5));
         interactiveGameCards.forEach((card) => cleanups.push(createTilt(card, 6.5)));
-
-        if (hero && heroCopy && heroVisual) {
-          const copyX = gsap.quickTo(heroCopy, "x", { duration: 0.75, ease: "power3.out" });
-          const visualX = gsap.quickTo(heroVisual, "x", { duration: 0.75, ease: "power3.out" });
-          const beamsX = gsap.quickTo(".dashboard-hero__beam", "x", { duration: 0.9, ease: "power3.out" });
-          const move = (event: PointerEvent) => {
-            const bounds = hero.getBoundingClientRect();
-            const progress = (event.clientX - bounds.left) / bounds.width - 0.5;
-            copyX(progress * -12);
-            visualX(progress * 18);
-            beamsX(progress * 28);
-          };
-          const reset = () => {
-            copyX(0);
-            visualX(0);
-            beamsX(0);
-          };
-          hero.addEventListener("pointermove", move);
-          hero.addEventListener("pointerleave", reset);
-          cleanups.push(() => {
-            hero.removeEventListener("pointermove", move);
-            hero.removeEventListener("pointerleave", reset);
-          });
-        }
       }
 
       refreshDashboardLayout();

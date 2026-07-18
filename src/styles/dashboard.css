@@ -957,15 +957,17 @@
 .dashboard-hero__visual {
   position: relative;
   z-index: 2;
+  isolation: isolate;
   min-height: 490px;
   display: grid;
   place-items: center;
-  transform-style: preserve-3d;
+  transform-style: flat;
   will-change: transform;
 }
 
 .hero-orbit {
   position: absolute;
+  z-index: 0;
   inset: 50% auto auto 50%;
   width: min(500px, 39vw);
   aspect-ratio: 1;
@@ -1028,6 +1030,7 @@
   inset: 0;
   z-index: 1;
   pointer-events: none;
+  transform-style: flat;
 }
 
 .hero-game-stack__card {
@@ -1079,7 +1082,7 @@
 }
 
 .profile-card {
-  z-index: 3;
+  z-index: 10;
   width: min(390px, 88%);
   padding: 29px;
   border-color: rgba(95, 245, 255, 0.26);
@@ -1091,7 +1094,8 @@
     0 34px 80px rgba(0, 0, 0, 0.45),
     0 0 0 1px rgba(255, 78, 205, 0.08) inset,
     0 0 52px rgba(95, 245, 255, 0.07);
-  transform-style: preserve-3d;
+  transform-style: flat;
+  backface-visibility: hidden;
   will-change: transform;
 }
 

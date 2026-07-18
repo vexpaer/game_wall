@@ -23,7 +23,6 @@ const initSiteEffects = () => {
   const siteShell = document.querySelector<HTMLElement>(".site-shell");
   const header = document.querySelector<HTMLElement>(".site-header");
   const signalTrack = document.querySelector<HTMLElement>(".signal-strip__track");
-  const cursor = document.querySelector<HTMLElement>(".cursor-aura");
   const progress = document.querySelector<HTMLElement>(".scroll-progress span");
   const ambientOrbs = gsap.utils.toArray<HTMLElement>(".ambient-orb");
   const media = gsap.matchMedia();
@@ -41,12 +40,10 @@ const initSiteEffects = () => {
 
   media.add(
     {
-      animate: "(prefers-reduced-motion: no-preference)",
-      finePointer: "(hover: hover) and (pointer: fine)"
+      animate: "(prefers-reduced-motion: no-preference)"
     },
     (context) => {
-      const { animate, finePointer } = context.conditions as { animate: boolean; finePointer: boolean };
-      const mediaCleanups: Array<() => void> = [];
+      const { animate } = context.conditions as { animate: boolean };
       const completeBoot = () => {
         if (siteShell) siteShell.inert = false;
         document.documentElement.dataset.bootState = "complete";
@@ -61,7 +58,7 @@ const initSiteEffects = () => {
 
       if (!animate) {
         if (boot) boot.hidden = true;
-        gsap.set([header, signalTrack, cursor, ...ambientOrbs].filter(Boolean), { clearProps: "all" });
+        gsap.set([header, signalTrack, ...ambientOrbs].filter(Boolean), { clearProps: "all" });
         completeBoot();
         return;
       }
@@ -124,35 +121,6 @@ const initSiteEffects = () => {
         });
       });
 
-      if (finePointer && cursor) {
-        const moveX = gsap.quickTo(cursor, "x", { duration: 0.42, ease: "power3.out" });
-        const moveY = gsap.quickTo(cursor, "y", { duration: 0.42, ease: "power3.out" });
-        let cursorVisible = false;
-        const moveCursor = (event: PointerEvent) => {
-          if (!cursorVisible) {
-            cursorVisible = true;
-            gsap.set(cursor, { autoAlpha: 1 });
-          }
-          moveX(event.clientX);
-          moveY(event.clientY);
-        };
-        window.addEventListener("pointermove", moveCursor, { passive: true });
-        mediaCleanups.push(() => window.removeEventListener("pointermove", moveCursor));
-
-        const interactiveElements = gsap.utils.toArray<HTMLElement>("a, button, input, select, [data-magnetic]");
-        interactiveElements.forEach((element) => {
-          const enter = () => gsap.to(cursor, { scale: 1.75, duration: 0.28, overwrite: true });
-          const leave = () => gsap.to(cursor, { scale: 1, duration: 0.32, overwrite: true });
-          element.addEventListener("pointerenter", enter);
-          element.addEventListener("pointerleave", leave);
-          mediaCleanups.push(() => {
-            element.removeEventListener("pointerenter", enter);
-            element.removeEventListener("pointerleave", leave);
-          });
-        });
-      }
-
-      return () => mediaCleanups.forEach((cleanup) => cleanup());
     }
   );
 
