@@ -324,7 +324,9 @@ const ringSegments = achievementSegments.map((segment) => {
           <strong>没有找到匹配的游戏</strong>
           <span>换个关键词或减少筛选条件试试。</span>
         </div>
-        <button class="load-more" id="load-more" type="button" hidden>显示更多游戏 <span aria-hidden="true">↓</span></button>
+        <button class="load-more" id="load-more" type="button" hidden aria-label="显示更多游戏；向下滚动时会自动加载">
+          显示更多游戏 <span aria-hidden="true">↓</span>
+        </button>
       </section>
     </div>
   ) : (
@@ -364,6 +366,7 @@ const ringSegments = achievementSegments.map((segment) => {
     const originalOrder = new Map(cards.map((card, index) => [card, index]));
     const pageSize = Number(grid.dataset.pageSize || 24);
     let visibleLimit = pageSize;
+    let isLoadingMore = false;
     let preferences: LibraryPreferences = { ...defaultLibraryPreferences };
 
     const numberFrom = (card: HTMLElement, key: string) => Number(card.dataset[key] || 0);
@@ -451,24 +454,40 @@ const ringSegments = achievementSegments.map((segment) => {
     };
 
     const updateAndAnimate = () => {
+      isLoadingMore = false;
+      if (loadMore) {
+        loadMore.disabled = false;
+        loadMore.removeAttribute("aria-busy");
+      }
       const matching = updateLibrary(true);
       animateLibraryUpdate(matching.slice(0, visibleLimit));
+    };
+
+    const loadNextPage = (moveFocus = false) => {
+      if (!loadMore || loadMore.hidden || isLoadingMore) return;
+      isLoadingMore = true;
+      loadMore.disabled = true;
+      loadMore.setAttribute("aria-busy", "true");
+
+      const previouslyVisible = visibleLimit;
+      visibleLimit += pageSize;
+      const matching = updateLibrary();
+      const visibleCards = Array.from(grid.querySelectorAll<HTMLElement>("[data-game-card]:not([hidden])"));
+      const focusTarget = visibleCards[previouslyVisible]?.querySelector<HTMLAnchorElement>("a");
+
+      animateLibraryUpdate(matching.slice(previouslyVisible, visibleLimit), () => {
+        isLoadingMore = false;
+        loadMore.disabled = false;
+        loadMore.removeAttribute("aria-busy");
+        if (moveFocus && loadMore.hidden) focusTarget?.focus();
+      });
     };
 
     search?.addEventListener("input", updateAndAnimate);
     [genre, platform, achievement, sort].forEach((control) => control?.addEventListener("change", updateAndAnimate));
     form.addEventListener("submit", (event) => event.preventDefault());
     form.addEventListener("reset", () => window.setTimeout(updateAndAnimate, 0));
-    loadMore?.addEventListener("click", () => {
-      const previouslyVisible = visibleLimit;
-      visibleLimit += pageSize;
-      const matching = updateLibrary();
-      const visibleCards = Array.from(grid.querySelectorAll<HTMLElement>("[data-game-card]:not([hidden])"));
-      const focusTarget = visibleCards[previouslyVisible]?.querySelector<HTMLAnchorElement>("a");
-      animateLibraryUpdate(matching.slice(previouslyVisible, visibleLimit), () => {
-        if (loadMore.hidden) focusTarget?.focus();
-      });
-    });
+    loadMore?.addEventListener("click", () => loadNextPage(true));
 
     viewAchievements?.addEventListener("change", () => {
       applyPreferences({ ...preferences, showAchievements: viewAchievements.checked });
@@ -491,6 +510,16 @@ const ringSegments = achievementSegments.map((segment) => {
 
     applyPreferences(readPreferences(), false, false);
     updateLibrary();
+
+    if (loadMore && "IntersectionObserver" in window) {
+      const loadObserver = new IntersectionObserver(
+        ([entry]) => {
+          if (entry?.isIntersecting) loadNextPage(document.activeElement === loadMore);
+        },
+        { rootMargin: "0px 0px 520px 0px", threshold: 0.01 }
+      );
+      loadObserver.observe(loadMore);
+    }
   }
 
   initDashboardEffects();
