@@ -1,0 +1,17 @@
+[
+  {
+    "title": "The Legend of Zelda: Breath of the Wild",
+    "externalId": "01007EF00011E000",
+    "playMinutes": 6000,
+    "firstPlayed": "2024-01-01",
+    "lastPlayed": "2026-07-18",
+    "system": "switch",
+    "ownership": "owned",
+    "coverUrl": "https://example.com/replace-with-a-public-cover.jpg"
+  },
+  {
+    "title": "实体卡游戏示例",
+    "system": "switch",
+    "ownership": "owned"
+  }
+]

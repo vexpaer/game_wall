@@ -1,6 +1,7 @@
 ---
-import type { SiteSnapshot } from "../types/steam";
+import { gameSources, type SiteSnapshot, type SourceAccount } from "../types/library";
 import { formatDate } from "../utils/format";
+import { sourceLabels } from "../utils/library";
 import Icon from "./Icon.astro";
 
 interface Props {
@@ -8,28 +9,37 @@ interface Props {
 }
 
 const { snapshot } = Astro.props;
-const isPrivate = snapshot.status === "private";
-const title = isPrivate ? "游戏资料未公开" : "还没有可展示的游戏";
-const description = isPrivate
-  ? "Steam 返回了有效的空游戏库。请将“游戏详情”设为公开，并确认没有勾选隐藏总游戏时长。"
-  : "这个 Steam 账户的公开游戏库中，暂时没有游玩时长大于 0 的游戏。";
+const accountBySource = new Map(snapshot.accounts.map((account) => [account.source, account]));
+const accounts: SourceAccount[] = gameSources.map((source) => accountBySource.get(source) ?? { source, status: "not_configured" });
+const statusLabels = {
+  ready: "已连接",
+  private: "资料未公开",
+  empty: "已连接，无记录",
+  not_configured: "未绑定",
+  unavailable: "同步暂不可用",
+  needs_rebind: "需要重新绑定"
+} as const;
+const hasAttention = accounts.some((account) => ["private", "unavailable", "needs_rebind"].includes(account.status));
+const title = hasAttention ? "游戏库暂时没有可展示数据" : "还没有可展示的游戏";
+const description = hasAttention
+  ? "至少一个平台需要检查公开权限、登录状态或同步任务。其他平台仍可独立绑定和更新。"
+  : "绑定游戏平台并运行同步任务后，游戏会同时出现在合并视图和分平台视图中。";
 ---
 
 <section class="status-page" aria-labelledby="status-title">
   <div class="status-panel">
-    <span class="status-panel__icon" aria-hidden="true"><Icon name={isPrivate ? "user" : "gamepad"} size={34} /></span>
-    <p class="section-kicker">STEAM LIBRARY STATUS</p>
+    <span class="status-panel__icon" aria-hidden="true"><Icon name="gamepad" size={34} /></span>
+    <p class="section-kicker">MULTI-PLATFORM LIBRARY STATUS</p>
     <h1 id="status-title">{title}</h1>
     <p class="status-panel__description">{description}</p>
-    <div class="status-panel__actions">
-      {snapshot.profile?.profileUrl && (
-        <a class="button button--primary" href={snapshot.profile.profileUrl} target="_blank" rel="noreferrer">
-          查看 Steam 资料 <Icon name="arrow-up-right" size={17} />
-        </a>
-      )}
-      <a class="button" href="https://help.steampowered.com/zh-cn/faqs/view/1150-C06F-4D62-4966" target="_blank" rel="noreferrer">
-        隐私设置帮助 <Icon name="arrow-up-right" size={17} />
-      </a>
+    <div class="status-panel__accounts" aria-label="游戏平台同步状态">
+      {accounts.map((account) => (
+        <article class={`status-account status-account--${account.status}`}>
+          <span>{sourceLabels[account.source]}</span>
+          <strong>{statusLabels[account.status]}</strong>
+          <small>{account.lastSyncedAt ? `上次同步 ${formatDate(account.lastSyncedAt, true)}` : "尚无成功同步记录"}</small>
+        </article>
+      ))}
     </div>
     <p class="status-panel__time">数据检查于 {formatDate(snapshot.generatedAt, true)}</p>
   </div>
@@ -92,6 +102,50 @@ const description = isPrivate
     gap: 10px;
   }
 
+  .status-panel__accounts {
+    margin-top: 28px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
+    text-align: left;
+  }
+
+  .status-account {
+    min-width: 0;
+    padding: 13px;
+    display: grid;
+    gap: 3px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: rgba(7, 4, 12, 0.45);
+  }
+
+  .status-account > span {
+    color: var(--muted);
+    font-size: 0.68rem;
+  }
+
+  .status-account > strong {
+    font-size: 0.82rem;
+  }
+
+  .status-account > small {
+    overflow-wrap: anywhere;
+    color: var(--muted);
+    font-size: 0.65rem;
+  }
+
+  .status-account--ready,
+  .status-account--empty {
+    border-color: rgba(202, 255, 72, 0.22);
+  }
+
+  .status-account--needs_rebind,
+  .status-account--private,
+  .status-account--unavailable {
+    border-color: rgba(255, 167, 78, 0.32);
+  }
+
   .button {
     min-height: 44px;
     padding: 9px 15px;
@@ -126,6 +180,10 @@ const description = isPrivate
     .status-panel__actions,
     .button {
       width: 100%;
+    }
+
+    .status-panel__accounts {
+      grid-template-columns: 1fr;
     }
   }
 </style>

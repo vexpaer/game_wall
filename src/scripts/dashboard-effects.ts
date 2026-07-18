@@ -137,7 +137,7 @@ export const initDashboardEffects = () => {
       const metricCards = gsap.utils.toArray<HTMLElement>(".metric-card", dashboard);
       const gameCards = gsap.utils.toArray<HTMLElement>("[data-game-card]", dashboard);
       const interactiveGameCards = gameCards.filter(
-        (card) => card.closest(".recent-grid") !== null || (card.closest("#library-grid") !== null && !card.hidden)
+        (card) => card.closest(".recent-grid") !== null || card.closest("#library-grid") !== null
       );
 
       if (!animate) {
@@ -271,32 +271,41 @@ export const initDashboardEffects = () => {
         })
       });
 
-      gsap.from(".insight-panel", {
-        autoAlpha: 0,
-        y: 54,
-        rotationX: 5,
-        duration: 0.78,
-        stagger: 0.12,
-        ease: "power3.out",
-        scrollTrigger: { trigger: ".insights-grid", start: "top 82%", once: true }
-      });
+      const insightsGrid = dashboard.querySelector<HTMLElement>(".insights-grid");
+      if (insightsGrid) {
+        gsap.from(insightsGrid.querySelectorAll(".insight-panel"), {
+          autoAlpha: 0,
+          y: 54,
+          rotationX: 5,
+          duration: 0.78,
+          stagger: 0.12,
+          ease: "power3.out",
+          scrollTrigger: { trigger: insightsGrid, start: "top 82%", once: true }
+        });
+      }
 
-      gsap.from(".ranking-list__track span", {
-        scaleX: 0,
-        transformOrigin: "left center",
-        duration: 0.82,
-        stagger: 0.09,
-        ease: "power3.out",
-        scrollTrigger: { trigger: ".ranking-list", start: "top 82%", once: true }
-      });
+      const rankingList = dashboard.querySelector<HTMLElement>(".ranking-list");
+      if (rankingList) {
+        gsap.from(rankingList.querySelectorAll(".ranking-list__track span"), {
+          scaleX: 0,
+          transformOrigin: "left center",
+          duration: 0.82,
+          stagger: 0.09,
+          ease: "power3.out",
+          scrollTrigger: { trigger: rankingList, start: "top 82%", once: true }
+        });
+      }
 
-      gsap.from(".achievement-chart__segment", {
-        strokeDashoffset: 100,
-        duration: 1.05,
-        stagger: 0.11,
-        ease: "power2.inOut",
-        scrollTrigger: { trigger: ".achievement-chart", start: "top 82%", once: true }
-      });
+      const achievementChart = dashboard.querySelector<HTMLElement>(".achievement-chart");
+      if (achievementChart) {
+        gsap.from(achievementChart.querySelectorAll(".achievement-chart__segment"), {
+          strokeDashoffset: 100,
+          duration: 1.05,
+          stagger: 0.11,
+          ease: "power2.inOut",
+          scrollTrigger: { trigger: achievementChart, start: "top 82%", once: true }
+        });
+      }
 
       gsap.from(".filter-panel, .library-view-settings", {
         autoAlpha: 0,

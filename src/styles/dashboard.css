@@ -282,7 +282,13 @@
 #library-grid[data-show-tags="false"] .game-card__tags,
 #library-grid[data-show-achievements="false"] .game-card__achievement,
 #library-grid[data-clean="true"] .game-card__body,
-#library-grid[data-clean="true"] .game-card__appid {
+#library-grid[data-clean="true"] .game-card__appid,
+#library-grid[data-clean="true"] .game-card__sources {
+  display: none;
+}
+
+.library-grid[data-active-mode="merged"] [data-view-mode="platform"],
+.library-grid[data-active-mode="platform"] [data-view-mode="merged"] {
   display: none;
 }
 
@@ -520,6 +526,160 @@
   scroll-margin-top: 24px;
 }
 
+.source-status-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.source-status-card {
+  --source-color: var(--muted-strong);
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid color-mix(in srgb, var(--source-color) 22%, transparent);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 100% 0, color-mix(in srgb, var(--source-color) 10%, transparent), transparent 9rem),
+    rgba(15, 9, 25, 0.82);
+}
+
+.source-status-card--steam { --source-color: #66c0f4; }
+.source-status-card--xbox { --source-color: #84d13b; }
+.source-status-card--epic { --source-color: #f3f3f3; }
+.source-status-card--switch { --source-color: #ff6570; }
+
+.source-status-card--ready,
+.source-status-card--empty {
+  box-shadow: inset 0 2px color-mix(in srgb, var(--source-color) 55%, transparent);
+}
+
+.source-status-card--private,
+.source-status-card--unavailable,
+.source-status-card--needs_rebind {
+  border-color: rgba(255, 167, 78, 0.38);
+}
+
+.source-status-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.source-status-card__top strong {
+  color: var(--source-color);
+  font-size: 1rem;
+}
+
+.source-status-card__top span {
+  padding: 3px 7px;
+  border: 1px solid color-mix(in srgb, var(--source-color) 25%, transparent);
+  border-radius: 999px;
+  color: var(--muted-strong);
+  font-size: 0.58rem;
+  white-space: nowrap;
+}
+
+.source-status-card p {
+  margin: 18px 0 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 0.78rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.source-status-card small {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 0.64rem;
+}
+
+.library-mode-panel {
+  margin-bottom: 12px;
+  padding: 14px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  border: 1px solid rgba(95, 245, 255, 0.16);
+  border-radius: 22px;
+  background:
+    linear-gradient(120deg, rgba(95, 245, 255, 0.07), transparent 38%, rgba(255, 78, 205, 0.05)),
+    rgba(11, 6, 18, 0.9);
+}
+
+.library-mode-switch,
+.source-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.library-mode-button {
+  min-width: min(210px, 100%);
+  min-height: 58px;
+  padding: 10px 13px;
+  display: grid;
+  gap: 2px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  color: var(--muted-strong);
+  text-align: left;
+  background: rgba(4, 2, 8, 0.62);
+  cursor: pointer;
+}
+
+.library-mode-button strong {
+  font-size: 0.78rem;
+}
+
+.library-mode-button span {
+  color: var(--muted);
+  font-size: 0.62rem;
+}
+
+.library-mode-button[aria-pressed="true"] {
+  border-color: rgba(95, 245, 255, 0.42);
+  color: var(--cyan);
+  background: rgba(95, 245, 255, 0.09);
+  box-shadow: 0 0 24px rgba(95, 245, 255, 0.06);
+}
+
+.source-filter {
+  justify-content: flex-end;
+}
+
+.source-filter button {
+  --source-color: var(--cyan);
+  min-height: 38px;
+  padding: 7px 10px;
+  border: 1px solid color-mix(in srgb, var(--source-color) 22%, transparent);
+  border-radius: 999px;
+  color: var(--muted-strong);
+  background: rgba(4, 2, 8, 0.52);
+  cursor: pointer;
+  font-size: 0.68rem;
+}
+
+.source-filter button span {
+  margin-left: 4px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.source-filter--steam { --source-color: #66c0f4 !important; }
+.source-filter--xbox { --source-color: #84d13b !important; }
+.source-filter--epic { --source-color: #f3f3f3 !important; }
+.source-filter--switch { --source-color: #ff6570 !important; }
+
+.source-filter button[aria-pressed="true"] {
+  border-color: color-mix(in srgb, var(--source-color) 52%, transparent);
+  color: var(--source-color);
+  background: color-mix(in srgb, var(--source-color) 10%, transparent);
+}
+
 .library-total {
   color: var(--muted);
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
@@ -530,7 +690,7 @@
 .filter-panel {
   padding: 14px;
   display: grid;
-  grid-template-columns: minmax(230px, 1.65fr) repeat(4, minmax(125px, 0.75fr)) auto;
+  grid-template-columns: minmax(230px, 1.65fr) repeat(3, minmax(125px, 0.75fr)) auto;
   align-items: end;
   gap: 10px;
   border: 1px solid var(--line);
@@ -1341,6 +1501,18 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .source-status-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .library-mode-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .source-filter {
+    justify-content: flex-start;
+  }
+
   .filter-panel {
     grid-template-columns: 2fr repeat(2, 1fr);
   }
@@ -1398,6 +1570,15 @@
 
   .filter-panel {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .source-status-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .library-mode-button {
+    min-width: 0;
+    flex: 1 1 160px;
   }
 
   .filter-search {

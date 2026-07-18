@@ -9,7 +9,9 @@ const snapshotPath = resolve(
 
 try {
   const snapshot = parseSiteSnapshot(JSON.parse(readFileSync(snapshotPath, "utf8")) as unknown);
-  console.log(`数据校验通过：${snapshot.status}，${snapshot.games.length} 款游戏`);
+  console.log(
+    `数据校验通过：${snapshot.status}，${snapshot.summary.uniqueGames} 款唯一游戏 / ${snapshot.games.length} 条平台记录`
+  );
 } catch (error) {
   const message = error instanceof Error ? error.message : String(error);
   console.error(`数据校验失败：${message}`);

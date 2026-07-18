@@ -9,6 +9,15 @@ data/cache/
 .env
 .env.*
 !.env.example
+.game-wall-state-key
+.epic-state-key
+.switch-state-key
+
+# Only encrypted provider state may be committed here.
+data/credentials/*.json
+data/credentials/*.tgz
+data/credentials/*.tar.gz
+data/credentials/*.tmp
 
 coverage/
 *.log

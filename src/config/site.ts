@@ -1,6 +1,6 @@
 export const siteConfig = {
   title: "vexpaer 游戏记录",
-  description: "vexpaer 的 Steam 游戏记录：游玩时长、最近活动与成就进度。",
+  description: "vexpaer 的 Steam、Xbox、Epic 与 Nintendo Switch 游戏记录。",
   language: "zh-CN",
   timeZone: "Asia/Shanghai",
   repositoryUrl: "",

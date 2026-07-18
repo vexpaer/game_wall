@@ -1234,3 +1234,215 @@
     transform: none;
   }
 }
+
+/* Multi-source game records */
+.detail-total-note {
+  max-width: 92ch;
+  margin: 13px 4px 0;
+  color: rgba(248, 244, 238, 0.58);
+  font-size: 0.68rem;
+  line-height: 1.7;
+}
+
+.achievement-detail__summary {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.achievement-detail__track {
+  height: 7px;
+  margin-top: 13px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: rgba(208, 200, 212, 0.12);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+
+.achievement-detail__track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--detail-violet), var(--detail-mint));
+  box-shadow: 0 0 18px rgba(180, 156, 255, 0.42);
+}
+
+.source-tag--steam::before,
+.source-record__badge--steam,
+.source-record--steam {
+  --source-accent: #66c0f4;
+}
+
+.source-tag--xbox::before,
+.source-record__badge--xbox,
+.source-record--xbox {
+  --source-accent: #69be28;
+}
+
+.source-tag--epic::before,
+.source-record__badge--epic,
+.source-record--epic {
+  --source-accent: #b6b6b6;
+}
+
+.source-tag--switch::before,
+.source-record__badge--switch,
+.source-record--switch {
+  --source-accent: #ff4554;
+}
+
+.detail-hero__tags .source-tag::before {
+  background: var(--source-accent, var(--detail-violet));
+  box-shadow: 0 0 10px var(--source-accent, var(--detail-violet));
+}
+
+.source-record-panel__count {
+  padding: 7px 10px;
+  border: 1px solid rgba(99, 230, 176, 0.28);
+  border-radius: 10px;
+  color: var(--detail-mint);
+  background: rgba(99, 230, 176, 0.08);
+  font-size: 0.76rem;
+  font-weight: 750;
+}
+
+.source-record-panel__intro {
+  max-width: 72ch;
+  margin: -10px 0 22px;
+  color: var(--muted-strong);
+  font-size: 0.8rem;
+  line-height: 1.7;
+}
+
+.source-records {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.source-record {
+  position: relative;
+  min-width: 0;
+  padding: 20px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--source-accent, var(--detail-violet)) 25%, rgba(255, 255, 255, 0.1));
+  border-radius: 18px 18px 18px 6px;
+  background:
+    radial-gradient(circle at 100% 0, color-mix(in srgb, var(--source-accent, var(--detail-violet)) 13%, transparent), transparent 16rem),
+    rgba(10, 8, 16, 0.55);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.035);
+  transform-style: preserve-3d;
+}
+
+.source-record::before {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 2px;
+  content: "";
+  background: linear-gradient(90deg, transparent, var(--source-accent, var(--detail-violet)), transparent);
+}
+
+.source-record__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.source-record__header > div {
+  min-width: 0;
+}
+
+.source-record__header h3 {
+  margin: 1px 0 4px;
+  color: var(--text);
+  font-size: 0.92rem;
+  line-height: 1.3;
+}
+
+.source-record__header code,
+.source-record dd code,
+.metadata-panel dd code {
+  overflow-wrap: anywhere;
+  color: rgba(248, 244, 238, 0.5);
+  font-size: 0.62rem;
+}
+
+.source-record__badge {
+  flex: 0 0 auto;
+  padding: 5px 8px;
+  border: 1px solid color-mix(in srgb, var(--source-accent) 40%, transparent);
+  border-radius: 7px;
+  color: color-mix(in srgb, var(--source-accent) 78%, white);
+  background: color-mix(in srgb, var(--source-accent) 10%, transparent);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.source-record dl {
+  margin: 18px 0 0;
+  display: grid;
+  gap: 0;
+}
+
+.source-record dl > div {
+  min-width: 0;
+  padding: 8px 0;
+  display: grid;
+  grid-template-columns: minmax(76px, 0.42fr) minmax(0, 1fr);
+  gap: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.source-record dt {
+  color: var(--muted);
+  font-size: 0.65rem;
+}
+
+.source-record dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--muted-strong);
+  font-size: 0.68rem;
+  line-height: 1.5;
+  text-align: right;
+}
+
+.source-record__links {
+  margin-top: 15px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.source-record__links a {
+  padding: 7px 9px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid color-mix(in srgb, var(--source-accent, var(--detail-violet)) 28%, transparent);
+  border-radius: 8px;
+  color: color-mix(in srgb, var(--source-accent, var(--detail-violet)) 74%, white);
+  background: color-mix(in srgb, var(--source-accent, var(--detail-violet)) 7%, transparent);
+  font-size: 0.66rem;
+}
+
+.source-record__no-link {
+  margin: 15px 0 0;
+  color: var(--muted);
+  font-size: 0.64rem;
+}
+
+@media (max-width: 720px) {
+  .source-records {
+    grid-template-columns: 1fr;
+  }
+
+  .source-record-panel__intro {
+    margin-top: 0;
+  }
+}

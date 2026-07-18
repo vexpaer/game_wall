@@ -1,0 +1,347 @@
+---
+import type { GetStaticPaths } from "astro";
+import Icon from "../../components/Icon.astro";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import "../../styles/game-detail.css";
+import type {
+  AchievementSummary,
+  DatePrecision,
+  GameRecord,
+  LibraryGame,
+  OwnershipStatus
+} from "../../types/library";
+import { formatActivityDate, formatDuration } from "../../utils/format";
+import { mergeGameRecords, sourceLabels } from "../../utils/library";
+import { getSnapshot } from "../../utils/snapshot";
+
+export const getStaticPaths = (() => {
+  const games = mergeGameRecords(getSnapshot().games);
+  const paths = new Map<string, {
+    params: { id: string };
+    props: Props;
+  }>();
+
+  for (const game of games) {
+    paths.set(game.canonicalId, {
+      params: { id: game.canonicalId },
+      props: { game }
+    });
+  }
+
+  for (const game of games) {
+    for (const record of game.records) {
+      if (
+        record.source !== "steam"
+        || !/^\d+$/u.test(record.externalId)
+        || record.externalId === game.canonicalId
+        || paths.has(record.externalId)
+      ) {
+        continue;
+      }
+      paths.set(record.externalId, {
+        params: { id: record.externalId },
+        props: { game, redirectTo: game.canonicalId }
+      });
+    }
+  }
+
+  return [...paths.values()];
+}) satisfies GetStaticPaths;
+
+interface Props {
+  [key: string]: unknown;
+  game: LibraryGame;
+  redirectTo?: string;
+}
+
+const { game, redirectTo } = Astro.props;
+const base = import.meta.env.BASE_URL;
+if (redirectTo) {
+  return Astro.redirect(`${base}games/${encodeURIComponent(redirectTo)}/`, 301);
+}
+const records = game.records;
+const heroImage = game.store.backgroundImageUrl ?? game.store.headerImageUrl;
+const knownPlaytimeRecords = records.filter((record) => record.playtime.totalMinutes !== undefined).length;
+const knownRecentRecords = records.filter((record) => record.playtime.recentMinutes !== undefined).length;
+const sourceNames = game.sources.map((source) => sourceLabels[source]);
+
+const platformNames: Record<string, string> = {
+  windows: "Windows",
+  mac: "macOS",
+  linux: "Linux",
+  deck: "Steam Deck",
+  xbox: "Xbox",
+  switch: "Nintendo Switch",
+  handheld: "掌机",
+  console: "主机"
+};
+const storeTypeNames: Record<string, string> = {
+  game: "游戏",
+  dlc: "DLC",
+  demo: "试玩版",
+  mod: "模组"
+};
+const ownershipNames: Record<OwnershipStatus, string> = {
+  owned: "已拥有",
+  played: "有游玩记录",
+  subscription: "订阅权益",
+  unknown: "来源未说明"
+};
+
+const formatKnownDuration = (minutes: number | undefined) =>
+  minutes === undefined ? "未知（来源未提供）" : formatDuration(minutes);
+const formatKnownDate = (value: string | undefined, precision?: DatePrecision) =>
+  value === undefined ? "未知（来源未提供）" : formatActivityDate(value, precision, true);
+const achievementLabel = (achievements: AchievementSummary) => {
+  switch (achievements.status) {
+    case "available":
+      return `${achievements.unlocked} / ${achievements.total} · ${Math.round(achievements.percentage)}%`;
+    case "none":
+      return "该来源没有可用成就";
+    case "unavailable":
+      return "本次同步暂未取得";
+    case "unsupported":
+      return "该来源不支持同步";
+  }
+};
+const recordLinks = (record: GameRecord) => {
+  const links: Array<{ href: string; label: string }> = [];
+  if (record.links.store) links.push({ href: record.links.store, label: "商店页面" });
+  if (record.links.community) links.push({ href: record.links.community, label: "社区 / 资料页" });
+  return links;
+};
+
+const primaryLinks = recordLinks(game.primary);
+const description = game.store.shortDescription
+  ?? "已合并来自多个游戏平台的这款游戏记录。商店简介尚未同步，游玩与成就数据仍按来源独立展示。";
+const pageDescription = `${game.name} 在 ${sourceNames.join("、")} 的游玩时长、成就与来源记录。`;
+const totalPlaytimeNote = knownPlaytimeRecords > 0
+  ? `合并时长由 ${knownPlaytimeRecords} 条已提供时长的平台记录直接相加；${records.length - knownPlaytimeRecords} 条未知记录未计入。跨平台进度可能重复。`
+  : "所有平台都未提供累计时长，因此不显示为 0。";
+const achievementNote = game.achievements.status === "available"
+  ? "不同平台的成就体系彼此独立；这里的解锁数与总数按已取得的来源记录相加，不做跨平台去重。"
+  : game.achievements.status === "none"
+    ? "已同步的来源均未提供可用成就。"
+    : game.achievements.status === "unavailable"
+      ? "至少一个来源本次未能取得成就数据；这不会影响游玩记录。"
+      : "当前来源尚不支持同步这款游戏的成就。";
+---
+
+<BaseLayout title={game.name} description={pageDescription} image={game.store.headerImageUrl}>
+  <article class="game-detail" data-detail-page>
+    <div class="detail-ambient" aria-hidden="true">
+      <span class="detail-orb detail-orb--one"></span>
+      <span class="detail-orb detail-orb--two"></span>
+      <span class="detail-orb detail-orb--three"></span>
+    </div>
+
+    <section class:list={["detail-hero", !heroImage && "detail-hero--fallback"]} aria-labelledby="game-title" data-detail-hero>
+      {heroImage && <img class="detail-hero__backdrop" src={heroImage} alt="" decoding="async" fetchpriority="high" />}
+      <div class="detail-hero__veil" aria-hidden="true"></div>
+      <div class="detail-hero__fx" aria-hidden="true">
+        <span class="detail-hero__grid"></span>
+        <span class="detail-hero__cursor"></span>
+        <span class="detail-hero__flare"></span>
+        <span class="detail-hero__scan"></span>
+        <span class="detail-hero__corner detail-hero__corner--tl"></span>
+        <span class="detail-hero__corner detail-hero__corner--br"></span>
+      </div>
+      <div class="detail-hero__content">
+        <div class="detail-hero__topline">
+          <a class="detail-back" href={base}><Icon name="arrow-left" size={17} /> 返回游戏墙</a>
+          <div class="detail-hero__hud" aria-hidden="true">
+            <span>PLAYER ARCHIVE</span>
+            <i></i>
+            <span>{records.length} SOURCE RECORDS</span>
+          </div>
+        </div>
+        <div class="detail-hero__identity">
+          <div class="detail-hero__cover-wrap" data-hero-cover>
+            {game.store.headerImageUrl ? (
+              <img class="detail-hero__cover" src={game.store.headerImageUrl} width="460" height="215" alt={`${game.name} 封面`} decoding="async" />
+            ) : (
+              <div class="detail-hero__cover detail-hero__cover--fallback">
+                {game.iconUrl ? <img src={game.iconUrl} width="68" height="68" alt="" /> : <span>{game.name.slice(0, 1).toLocaleUpperCase("zh-CN")}</span>}
+              </div>
+            )}
+            <span class="detail-hero__cover-code" aria-hidden="true">// {game.canonicalId}</span>
+          </div>
+          <div class="detail-hero__copy">
+            <p class="section-kicker">MERGED GAME · {sourceNames.join(" + ")}</p>
+            <h1 id="game-title" data-hero-title>
+              <span class="detail-title__echo" aria-hidden="true">{game.name}</span>
+              <span class="detail-title__main">{game.name}</span>
+            </h1>
+            <div class="detail-hero__tags">
+              {game.sources.map((source) => <span class={`source-tag source-tag--${source}`} data-hero-tag>{sourceLabels[source]}</span>)}
+              {game.store.genres.slice(0, 3).map((genre) => <span data-hero-tag>{genre}</span>)}
+              {game.store.platforms.slice(0, 3).map((platform) => <span class="platform-tag" data-hero-tag>{platformNames[platform] ?? platform}</span>)}
+            </div>
+            {primaryLinks.length > 0 && (
+              <div class="detail-hero__actions">
+                {primaryLinks.map((link, index) => (
+                  <a class:list={["detail-button", index === 0 && "detail-button--primary"]} href={link.href} target="_blank" rel="noreferrer" data-magnetic>
+                    {sourceLabels[game.primary.source]} {link.label} <Icon name="arrow-up-right" size={17} />
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="detail-metrics" aria-label="合并游玩概览">
+      <article data-metric data-tilt>
+        <span><Icon name="clock" size={18} /></span>
+        <div><small>已知累计时长之和</small><strong>{formatKnownDuration(game.playtime.totalMinutes)}</strong></div>
+      </article>
+      <article data-metric data-tilt>
+        <span><Icon name="spark" size={18} /></span>
+        <div><small>已知近期时长之和</small><strong>{formatKnownDuration(game.playtime.recentMinutes)}</strong></div>
+      </article>
+      <article data-metric data-tilt>
+        <span><Icon name="calendar" size={18} /></span>
+        <div><small>最近一次游玩</small><strong>{formatKnownDate(game.lastPlayedAt, game.lastPlayedPrecision)}</strong></div>
+      </article>
+      <article data-metric data-tilt>
+        <span><Icon name="gamepad" size={18} /></span>
+        <div><small>平台记录</small><strong>{records.length} 条 · {sourceNames.join(" / ")}</strong></div>
+      </article>
+    </section>
+    <p class="detail-total-note">
+      {totalPlaytimeNote}
+      {knownRecentRecords > 0 && ` 近期时长同样只相加 ${knownRecentRecords} 条已知记录。`}
+    </p>
+
+    <div class="detail-layout">
+      <div class="detail-main">
+        <section class="detail-panel" aria-labelledby="overview-title" data-reveal>
+          <p class="section-kicker"><Icon name="gamepad" size={15} /> GAME OVERVIEW</p>
+          <h2 id="overview-title">关于这款游戏</h2>
+          <p class="detail-description">{description}</p>
+        </section>
+
+        <section class="detail-panel achievement-detail" aria-labelledby="achievement-title" data-reveal>
+          <div class="detail-panel__heading">
+            <div>
+              <p class="section-kicker"><Icon name="trophy" size={15} /> MERGED ACHIEVEMENTS</p>
+              <h2 id="achievement-title">跨来源成就概览</h2>
+            </div>
+            {game.achievements.status === "available" && (
+              <span class="achievement-detail__score">{game.achievements.unlocked}<small> / {game.achievements.total}</small></span>
+            )}
+          </div>
+          <p class="achievement-detail__summary">{achievementLabel(game.achievements)}</p>
+          {game.achievements.status === "available" && (
+            <div class="achievement-detail__track" role="progressbar" aria-label={`合并成就完成率 ${Math.round(game.achievements.percentage)}%`} aria-valuemin="0" aria-valuemax="100" aria-valuenow={Math.round(game.achievements.percentage)}>
+              <span style={`width: ${Math.min(100, Math.max(0, game.achievements.percentage))}%`}></span>
+            </div>
+          )}
+          <p class="achievement-detail__note">{achievementNote}</p>
+        </section>
+
+        <section class="detail-panel source-record-panel" aria-labelledby="source-records-title" data-reveal>
+          <div class="detail-panel__heading">
+            <div>
+              <p class="section-kicker"><Icon name="grid" size={15} /> SOURCE RECORDS</p>
+              <h2 id="source-records-title">各平台独立记录</h2>
+            </div>
+            <span class="source-record-panel__count">{records.length} 条</span>
+          </div>
+          <p class="source-record-panel__intro">合并展示不会覆盖原始来源数据。外部 ID、时长、成就状态和链接均按平台分别保留。</p>
+          <div class="source-records">
+            {records.map((record) => {
+              const links = recordLinks(record);
+              return (
+                <article class={`source-record source-record--${record.source}`} data-tilt>
+                  <header class="source-record__header">
+                    <span class={`source-record__badge source-record__badge--${record.source}`}>{sourceLabels[record.source]}</span>
+                    <div>
+                      <h3>{record.name}</h3>
+                      <code>{record.id}</code>
+                    </div>
+                  </header>
+                  <dl>
+                    <div><dt>来源</dt><dd>{sourceLabels[record.source]}</dd></div>
+                    <div><dt>外部 ID</dt><dd><code>{record.externalId}</code></dd></div>
+                    <div><dt>获取方式</dt><dd>{ownershipNames[record.ownership]}</dd></div>
+                    <div><dt>累计时长</dt><dd>{formatKnownDuration(record.playtime.totalMinutes)}</dd></div>
+                    <div><dt>近期时长</dt><dd>{formatKnownDuration(record.playtime.recentMinutes)}</dd></div>
+                    <div><dt>最后游玩</dt><dd>{formatKnownDate(record.lastPlayedAt, record.lastPlayedPrecision)}</dd></div>
+                    <div><dt>成就状态</dt><dd>{achievementLabel(record.achievements)}</dd></div>
+                  </dl>
+                  {links.length > 0 ? (
+                    <div class="source-record__links">
+                      {links.map((link) => (
+                        <a href={link.href} target="_blank" rel="noreferrer">{link.label} <Icon name="arrow-up-right" size={15} /></a>
+                      ))}
+                    </div>
+                  ) : (
+                    <p class="source-record__no-link">该来源未提供可公开访问的外链。</p>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+        </section>
+
+        {game.store.screenshots.length > 0 && (
+          <section class="detail-panel screenshot-panel" aria-labelledby="gallery-title" data-reveal>
+            <p class="section-kicker"><Icon name="grid" size={15} /> SCREENSHOTS</p>
+            <h2 id="gallery-title">游戏画面</h2>
+            <div class="screenshot-grid">
+              {game.store.screenshots.slice(0, 4).map((screenshot, index) => (
+                <a href={screenshot} target="_blank" rel="noreferrer" aria-label={`查看 ${game.name} 截图 ${index + 1}`} data-screenshot data-tilt>
+                  <img src={screenshot} alt={`${game.name} 游戏截图 ${index + 1}`} loading="lazy" decoding="async" />
+                </a>
+              ))}
+            </div>
+          </section>
+        )}
+      </div>
+
+      <aside class="detail-sidebar" aria-label="游戏资料">
+        <section class="detail-panel metadata-panel" data-reveal>
+          <p class="section-kicker">MERGED METADATA</p>
+          <h2>合并资料</h2>
+          <dl>
+            <div><dt>Canonical ID</dt><dd><code>{game.canonicalId}</code></dd></div>
+            <div><dt>数据来源</dt><dd>{sourceNames.join(" · ")}</dd></div>
+            <div><dt>发行日期</dt><dd>{game.store.releaseDate ?? "暂无资料"}</dd></div>
+            <div><dt>开发商</dt><dd>{game.store.developers.length > 0 ? game.store.developers.join("、") : "暂无资料"}</dd></div>
+            <div><dt>发行商</dt><dd>{game.store.publishers.length > 0 ? game.store.publishers.join("、") : "暂无资料"}</dd></div>
+            <div><dt>游戏类型</dt><dd>{storeTypeNames[game.store.type ?? "game"] ?? game.store.type ?? "游戏"}</dd></div>
+            <div><dt>支持平台</dt><dd>{game.store.platforms.length > 0 ? game.store.platforms.map((platform) => platformNames[platform] ?? platform).join(" · ") : "暂无资料"}</dd></div>
+          </dl>
+        </section>
+
+        <section class="detail-panel platform-time" data-reveal>
+          <p class="section-kicker">PLAYTIME BY SOURCE</p>
+          <h2>来源时长</h2>
+          <ul>
+            {records.map((record) => (
+              <li>
+                <span>{sourceLabels[record.source]}</span>
+                <strong>{formatKnownDuration(record.playtime.totalMinutes)}</strong>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        {primaryLinks[0] && (
+          <section class="community-card" data-reveal data-community-card>
+            <span aria-hidden="true"><Icon name="gamepad" size={27} /></span>
+            <h2>继续探索</h2>
+            <p>前往 {sourceLabels[game.primary.source]} 查看该来源提供的公开资料。</p>
+            <a href={primaryLinks[0].href} target="_blank" rel="noreferrer">打开外部页面 <Icon name="arrow-up-right" size={16} /></a>
+          </section>
+        )}
+      </aside>
+    </div>
+  </article>
+</BaseLayout>
+
+<script>
+  import "../../scripts/detail-effects";
+</script>

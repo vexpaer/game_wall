@@ -1,5 +1,4 @@
 ---
-import AchievementBadge from "../components/AchievementBadge.astro";
 import GameCard from "../components/GameCard.astro";
 import Icon from "../components/Icon.astro";
 import MetricCard from "../components/MetricCard.astro";
@@ -7,72 +6,82 @@ import StatusPanel from "../components/StatusPanel.astro";
 import { siteConfig } from "../config/site";
 import BaseLayout from "../layouts/BaseLayout.astro";
 import "../styles/dashboard.css";
-import type { SteamGame } from "../types/steam";
+import { gameSources, type GameSource, type SourceAccount } from "../types/library";
 import { clampPercentage, formatDate, formatDuration } from "../utils/format";
+import { mergeGameRecords, sourceLabels } from "../utils/library";
 import { getSnapshot } from "../utils/snapshot";
 
 const snapshot = getSnapshot();
 const base = import.meta.env.BASE_URL;
-const gameHref = (game: SteamGame) => `${base}games/${game.appId}/`;
-const isReady = snapshot.status === "ready" && snapshot.games.length > 0;
-const games = [...snapshot.games];
-const profile = snapshot.profile;
-const libraryGames = [...games].sort((a, b) => {
-  const dateDifference = (Date.parse(b.lastPlayedAt ?? "") || 0) - (Date.parse(a.lastPlayedAt ?? "") || 0);
-  return dateDifference || b.playtime.foreverMinutes - a.playtime.foreverMinutes;
-});
-const recentGames = libraryGames.slice(0, 4);
-const topGames = [...games].sort((a, b) => b.playtime.foreverMinutes - a.playtime.foreverMinutes).slice(0, 6);
-const maximumPlaytime = topGames[0]?.playtime.foreverMinutes ?? 1;
-const genres = [...new Set(games.flatMap((game) => game.store.genres))].sort((a, b) => a.localeCompare(b, "zh-CN"));
-const availablePlatforms = ["windows", "mac", "linux"].filter((platform) =>
-  games.some((game) => game.store.platforms.includes(platform))
-);
-const platformNames: Record<string, string> = { windows: "Windows", mac: "macOS", linux: "Linux" };
+const gameHref = (canonicalId: string) => `${base}games/${canonicalId}/`;
+const dateValue = (value: string | undefined) => value ? Date.parse(value) || 0 : 0;
+const sortByActivity = <T extends { lastPlayedAt?: string; name: string; playtime: { totalMinutes?: number } }>(left: T, right: T) =>
+  dateValue(right.lastPlayedAt) - dateValue(left.lastPlayedAt)
+  || (right.playtime.totalMinutes ?? -1) - (left.playtime.totalMinutes ?? -1)
+  || left.name.localeCompare(right.name, "zh-CN");
 
-const achievementCounts = {
-  perfect: games.filter((game) => game.achievements.status === "available" && game.achievements.total > 0 && game.achievements.percentage >= 100).length,
-  progress: games.filter((game) => game.achievements.status === "available" && game.achievements.unlocked > 0 && game.achievements.percentage < 100).length,
-  untouched: games.filter((game) => game.achievements.status === "available" && game.achievements.unlocked === 0).length,
-  other: games.filter((game) => game.achievements.status !== "available").length
-};
-const achievementSegments = [
-  { key: "perfect", label: "全成就", count: achievementCounts.perfect, color: "lime" },
-  { key: "progress", label: "进行中", count: achievementCounts.progress, color: "cyan" },
-  { key: "untouched", label: "尚未解锁", count: achievementCounts.untouched, color: "violet" },
-  { key: "other", label: "无成就 / 暂不可用", count: achievementCounts.other, color: "muted" }
-];
-let ringOffset = 0;
-const ringSegments = achievementSegments.map((segment) => {
-  const percentage = games.length > 0 ? (segment.count / games.length) * 100 : 0;
-  const result = { ...segment, percentage, offset: -ringOffset };
-  ringOffset += percentage;
-  return result;
+const mergedGames = mergeGameRecords(snapshot.games).sort(sortByActivity);
+const platformGames = [...snapshot.games].sort(sortByActivity);
+const recentGames = mergedGames.filter((game) => game.lastPlayedAt !== undefined).slice(0, 4);
+const mergedSourceCounts = Object.fromEntries(
+  gameSources.map((source) => [source, mergedGames.filter((game) => game.sources.includes(source)).length])
+) as Record<GameSource, number>;
+const genres = [...new Set(snapshot.games.flatMap((game) => game.store.genres))]
+  .sort((left, right) => left.localeCompare(right, "zh-CN"));
+const hasGames = snapshot.games.length > 0;
+const knownTotalMinutes = snapshot.summary.knownPlaytimeRecords > 0 ? snapshot.summary.totalMinutes : undefined;
+const achievementValue = snapshot.summary.totalAchievements > 0
+  ? `${Math.round(clampPercentage(snapshot.summary.achievementPercentage))}%`
+  : "未提供";
+
+const accountBySource = new Map(snapshot.accounts.map((account) => [account.source, account]));
+const accounts: SourceAccount[] = gameSources.map((source) => accountBySource.get(source) ?? {
+  source,
+  status: "not_configured"
 });
+const readyAccounts = accounts.filter((account) => account.status === "ready" || account.status === "empty");
+const featuredAccount = readyAccounts.find((account) => account.profile)?.profile;
+const accountStatusLabels: Record<SourceAccount["status"], string> = {
+  ready: "已连接",
+  private: "资料未公开",
+  empty: "已连接，无记录",
+  not_configured: "未绑定",
+  unavailable: "同步暂不可用",
+  needs_rebind: "需要重新绑定"
+};
+const accountStatusDescriptions: Record<SourceAccount["status"], string> = {
+  ready: "定期同步已启用",
+  private: "检查公开权限后重试",
+  empty: "同步正常，暂未发现游戏",
+  not_configured: "完成一次本地绑定后启用",
+  unavailable: "本次同步失败，将保留已有数据",
+  needs_rebind: "登录凭据已失效"
+};
 ---
 
 <BaseLayout>
-  {isReady ? (
+  {hasGames ? (
     <div class="dashboard">
       <section class="dashboard-hero" aria-labelledby="dashboard-title">
         <div class="dashboard-hero__beam dashboard-hero__beam--one" aria-hidden="true"></div>
         <div class="dashboard-hero__beam dashboard-hero__beam--two" aria-hidden="true"></div>
         <div class="dashboard-hero__copy">
-          <p class="dashboard-hero__eyebrow"><i aria-hidden="true"></i> PLAYER PROFILE / UNIVERSE 01</p>
+          <p class="dashboard-hero__eyebrow"><i aria-hidden="true"></i> CROSS-PLATFORM PLAYER ARCHIVE</p>
           <h1 id="dashboard-title">
             <span class="hero-title-line hero-title-line--solid">VEXPAER'S</span>
             <span class="hero-title-line hero-title-line--outline">GAME</span>
             <span class="hero-title-line hero-title-line--accent">DIMENSION</span>
           </h1>
-          <p class="dashboard-hero__lead">把每一次开局、每一小时沉浸和每一枚成就，压缩成一座持续闪烁的玩家宇宙。</p>
+          <p class="dashboard-hero__lead">Steam、Xbox、Epic 与 Switch 汇入同一座玩家宇宙，也保留每个平台自己的记录。</p>
           <div class="dashboard-hero__meta">
             <span><Icon name="calendar" size={16} /> 更新于 {formatDate(snapshot.generatedAt, true)}</span>
-            <span><Icon name="grid" size={16} /> {snapshot.summary.playedGames} 款玩过的游戏</span>
+            <span><Icon name="grid" size={16} /> {snapshot.summary.uniqueGames} 款合并游戏</span>
+            <span><Icon name="spark" size={16} /> {readyAccounts.length} / 4 个平台已连接</span>
           </div>
         </div>
 
         <div class="dashboard-hero__visual">
-          <div class="hero-orbit" aria-hidden="true"><i></i><i></i><span>01</span></div>
+          <div class="hero-orbit" aria-hidden="true"><i></i><i></i><span>04</span></div>
           <div class="hero-game-stack" aria-hidden="true">
             {recentGames.slice(0, 3).map((game, index) => game.store.headerImageUrl && (
               <div class={`hero-game-stack__card hero-game-stack__card--${index + 1}`}>
@@ -82,29 +91,29 @@ const ringSegments = achievementSegments.map((segment) => {
             ))}
           </div>
 
-          <aside class="profile-card" aria-label="Steam 玩家资料">
+          <aside class="profile-card" aria-label="多平台玩家资料">
             <div class="profile-card__scanline" aria-hidden="true"></div>
-            <span class="profile-card__serial" aria-hidden="true">PLAYER // 01</span>
+            <span class="profile-card__serial" aria-hidden="true">PLAYER // MULTI</span>
             <div class="profile-card__top">
               <span class="profile-card__avatar" aria-hidden="true">
                 <span class="profile-card__fallback"><Icon name="user" size={32} /></span>
-                {profile?.avatarUrl && (
-                  <img src={profile.avatarUrl} width="96" height="96" alt="" data-profile-avatar />
+                {featuredAccount?.avatarUrl && (
+                  <img src={featuredAccount.avatarUrl} width="96" height="96" alt="" data-profile-avatar />
                 )}
               </span>
               <div>
-                <span class="profile-card__eyebrow"><i aria-hidden="true"></i> PUBLIC PROFILE</span>
-                <h2>{profile?.personaName ?? `Steam 玩家 ${snapshot.steamId}`}</h2>
-                <p>Steam ID · {snapshot.steamId}</p>
+                <span class="profile-card__eyebrow"><i aria-hidden="true"></i> MULTI-PLATFORM PROFILE</span>
+                <h2>{featuredAccount?.displayName ?? "玩家游戏档案"}</h2>
+                <p>{readyAccounts.length} CONNECTED SOURCES</p>
               </div>
             </div>
             <div class="profile-card__stats">
-              <div><strong>{formatDuration(snapshot.summary.recentMinutes)}</strong><span>近两周</span></div>
-              <div><strong>{snapshot.summary.perfectGames}</strong><span>全成就游戏</span></div>
+              <div><strong>{snapshot.summary.uniqueGames}</strong><span>合并游戏</span></div>
+              <div><strong>{snapshot.summary.platformRecords}</strong><span>平台记录</span></div>
             </div>
-            {profile?.profileUrl && (
-              <a class="profile-card__link" href={profile.profileUrl} target="_blank" rel="noreferrer">
-                打开 Steam 个人资料 <Icon name="arrow-up-right" size={17} />
+            {featuredAccount?.profileUrl && (
+              <a class="profile-card__link" href={featuredAccount.profileUrl} target="_blank" rel="noreferrer">
+                打开平台个人资料 <Icon name="arrow-up-right" size={17} />
               </a>
             )}
           </aside>
@@ -112,119 +121,140 @@ const ringSegments = achievementSegments.map((segment) => {
       </section>
 
       <section class="metrics" aria-label="游戏数据概览">
-        <MetricCard label="玩过的游戏" value={snapshot.summary.playedGames} detail="已过滤零时长游戏" icon="gamepad" tone="cyan" />
-        <MetricCard label="累计游戏时间" value={formatDuration(snapshot.summary.totalMinutes)} detail="全部游戏累计" icon="clock" tone="violet" />
-        <MetricCard label="近两周游戏时间" value={formatDuration(snapshot.summary.recentMinutes)} detail="Steam 近期活动" icon="spark" tone="lime" />
-        <MetricCard label="加权成就完成率" value={`${Math.round(clampPercentage(snapshot.summary.achievementPercentage))}%`} detail={`${snapshot.summary.unlockedAchievements} / ${snapshot.summary.totalAchievements} 项`} icon="trophy" tone="amber" />
-        <MetricCard label="全成就游戏" value={snapshot.summary.perfectGames} detail="已完成全部 Steam 成就" icon="trophy" tone="lime" />
+        <MetricCard label="合并游戏" value={snapshot.summary.uniqueGames} detail="同名跨平台记录合并" icon="gamepad" tone="cyan" />
+        <MetricCard label="平台记录" value={snapshot.summary.platformRecords} detail="保留各平台独立数据" icon="spark" tone="violet" />
+        <MetricCard label="累计游戏时间" value={formatDuration(knownTotalMinutes)} detail={`${snapshot.summary.knownPlaytimeRecords} 条记录提供时长`} icon="clock" tone="lime" />
+        <MetricCard label="成就完成率" value={achievementValue} detail={snapshot.summary.totalAchievements > 0 ? `${snapshot.summary.unlockedAchievements} / ${snapshot.summary.totalAchievements} 项` : "平台未提供时不记为 0"} icon="trophy" tone="amber" />
+        <MetricCard label="全成就游戏" value={snapshot.summary.perfectGames} detail="所有已同步成就均已解锁" icon="trophy" tone="lime" />
       </section>
 
       <section class="manifesto" aria-label="玩家宣言">
         <div class="manifesto__track" aria-hidden="true">
-          <span>PLAY.</span><span>TRACK.</span><span>CONQUER.</span><span>REPEAT.</span>
+          <span>PLAY.</span><span>MERGE.</span><span>TRACK.</span><span>REPEAT.</span>
         </div>
         <div class="manifesto__note">
-          <span>NO PAUSE // JUST PROGRESS</span>
-          <p>时间不是消失了，它只是变成了地图、Boss 战和闪亮的成就图标。</p>
+          <span>FOUR SOURCES // ONE ARCHIVE</span>
+          <p>跨平台标题可以并肩汇总，原始来源、游玩时长与成就状态仍然逐条保留。</p>
         </div>
       </section>
 
-      <section class="page-section" aria-labelledby="recent-title">
+      {recentGames.length > 0 && (
+        <section class="page-section" aria-labelledby="recent-title">
+          <div class="section-heading">
+            <div>
+              <p class="section-kicker"><Icon name="clock" size={15} /> RECENTLY PLAYED</p>
+              <h2 id="recent-title">最近游玩</h2>
+              <p class="section-description">按所有已连接平台中最近一次活动排序。</p>
+            </div>
+          </div>
+          <div class="recent-grid">
+            {recentGames.map((game) => <GameCard game={game} href={gameHref(game.canonicalId)} eager />)}
+          </div>
+        </section>
+      )}
+
+      <section class="page-section" aria-labelledby="sync-title">
         <div class="section-heading">
           <div>
-            <p class="section-kicker"><Icon name="clock" size={15} /> RECENTLY PLAYED</p>
-            <h2 id="recent-title">最近游玩</h2>
-            <p class="section-description">按最后运行时间排列，回到旅程刚刚停下的地方。</p>
+            <p class="section-kicker"><Icon name="spark" size={15} /> SOURCE HEALTH</p>
+            <h2 id="sync-title">平台绑定与同步</h2>
+            <p class="section-description">每个平台独立同步；某个平台失败时，其他来源和已有快照仍可展示。</p>
           </div>
-          <a class="text-link" href={`${base}#game-library`}>查看完整游戏库 <Icon name="arrow-up-right" size={16} /></a>
         </div>
-        <div class="recent-grid">
-          {recentGames.map((game) => <GameCard game={game} href={gameHref(game)} eager />)}
+        <div class="source-status-grid">
+          {accounts.map((account) => (
+            <article class={`source-status-card source-status-card--${account.source} source-status-card--${account.status}`}>
+              <div class="source-status-card__top">
+                <strong>{sourceLabels[account.source]}</strong>
+                <span>{accountStatusLabels[account.status]}</span>
+              </div>
+              <p>{account.profile?.displayName ?? accountStatusDescriptions[account.status]}</p>
+              <small>{account.lastSyncedAt ? `上次同步 ${formatDate(account.lastSyncedAt, true)}` : "尚无成功同步记录"}</small>
+            </article>
+          ))}
         </div>
-      </section>
-
-      <section class="page-section insights-grid" aria-label="游戏数据洞察">
-        <article class="insight-panel playtime-ranking">
-          <div class="insight-panel__heading">
-            <div>
-              <p class="section-kicker"><Icon name="clock" size={15} /> PLAYTIME RANKING</p>
-              <h2>时长排行</h2>
-            </div>
-            <span>TOP {topGames.length}</span>
-          </div>
-          <ol class="ranking-list">
-            {topGames.map((game, index) => (
-              <li>
-                <span class="ranking-list__number">{String(index + 1).padStart(2, "0")}</span>
-                <div class="ranking-list__game">
-                  <div>
-                    <a href={gameHref(game)}>{game.name}</a>
-                    <span>{formatDuration(game.playtime.foreverMinutes)}</span>
-                  </div>
-                  <div class="ranking-list__track" aria-hidden="true">
-                    <span style={`width: ${(game.playtime.foreverMinutes / maximumPlaytime) * 100}%`}></span>
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ol>
-        </article>
-
-        <article class="insight-panel achievement-panel">
-          <div class="insight-panel__heading">
-            <div>
-              <p class="section-kicker"><Icon name="trophy" size={15} /> ACHIEVEMENTS</p>
-              <h2>成就分布</h2>
-            </div>
-          </div>
-          <div class="achievement-chart">
-            <div class="achievement-chart__ring">
-              <svg viewBox="0 0 42 42" aria-hidden="true">
-                <circle class="achievement-chart__base" cx="21" cy="21" r="15.9155" pathLength="100"></circle>
-                {ringSegments.map((segment) => segment.percentage > 0 && (
-                  <circle
-                    class={`achievement-chart__segment achievement-chart__segment--${segment.color}`}
-                    cx="21"
-                    cy="21"
-                    r="15.9155"
-                    pathLength="100"
-                    stroke-dasharray={`${segment.percentage} ${100 - segment.percentage}`}
-                    stroke-dashoffset={segment.offset}
-                  ></circle>
-                ))}
-              </svg>
-              <div><strong>{games.length}</strong><span>款游戏</span></div>
-            </div>
-            <ul class="achievement-chart__legend">
-              {achievementSegments.map((segment) => (
-                <li>
-                  <span class={`legend-dot legend-dot--${segment.color}`} aria-hidden="true"></span>
-                  <span>{segment.label}</span>
-                  <strong>{segment.count}</strong>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div class="achievement-panel__summary">
-            <span>全部可用成就</span>
-            <AchievementBadge achievements={{
-              status: snapshot.summary.totalAchievements > 0 ? "available" : "none",
-              unlocked: snapshot.summary.unlockedAchievements,
-              total: snapshot.summary.totalAchievements,
-              percentage: snapshot.summary.achievementPercentage
-            }} />
-          </div>
-        </article>
       </section>
 
       <section class="page-section library-section" id="game-library" aria-labelledby="library-title">
         <div class="section-heading">
           <div>
-            <p class="section-kicker"><Icon name="grid" size={15} /> ALL GAMES</p>
+            <p class="section-kicker"><Icon name="grid" size={15} /> GAME LIBRARY</p>
             <h2 id="library-title">完整游戏库</h2>
-            <p class="section-description">搜索、筛选并重新排列这份游玩记录。</p>
+            <p class="section-description">在去重后的合并视图与保留来源的分平台视图之间切换。</p>
           </div>
-          <span class="library-total">{games.length} GAMES</span>
+          <span class="library-total" id="library-total">{mergedGames.length} GAMES</span>
+        </div>
+
+        <noscript>
+          <style is:inline>
+            #game-library .library-mode-panel,
+            #game-library .filter-panel,
+            #game-library .library-view-settings,
+            #game-library .library-status,
+            #game-library .library-total,
+            #game-library .load-more {
+              display: none !important;
+            }
+
+            #library-grid [data-game-card] {
+              display: block !important;
+            }
+
+            #library-grid > noscript {
+              display: contents;
+            }
+
+            #game-library .library-noscript-note {
+              margin: 0 0 18px;
+              color: var(--muted-strong);
+            }
+
+            #library-grid .library-noscript-heading {
+              grid-column: 1 / -1;
+              margin: 18px 0 0;
+              padding-bottom: 10px;
+              border-bottom: 1px solid var(--line);
+            }
+
+            #library-grid .library-noscript-heading h3 {
+              margin: 0;
+            }
+
+            #library-grid .library-noscript-heading p {
+              margin: 5px 0 0;
+              color: var(--muted);
+              font-size: 0.78rem;
+            }
+          </style>
+          <p class="library-noscript-note">
+            JavaScript 未启用：以下先展示去重后的合并游戏，再展示每个平台的独立记录；交互筛选暂不可用。
+          </p>
+        </noscript>
+
+        <div class="library-mode-panel">
+          <div class="library-mode-switch" role="group" aria-label="游戏库展示方式">
+            <button type="button" class="library-mode-button" data-library-mode-button="merged" aria-pressed="true" aria-controls="library-grid">
+              <strong>合并展示</strong><span>同一游戏只显示一次</span>
+            </button>
+            <button type="button" class="library-mode-button" data-library-mode-button="platform" aria-pressed="false" aria-controls="library-grid">
+              <strong>分平台展示</strong><span>每条来源记录单独显示</span>
+            </button>
+          </div>
+          <div class="source-filter" role="group" aria-label="按游戏平台筛选">
+            <button type="button" data-source-filter="all" aria-pressed="true" aria-controls="library-grid">全部</button>
+            {gameSources.map((source: GameSource) => (
+              <button type="button" class={`source-filter--${source}`} data-source-filter={source} aria-pressed="false" aria-controls="library-grid">
+                {sourceLabels[source]}
+                <span
+                  data-source-count
+                  data-merged-count={mergedSourceCounts[source]}
+                  data-platform-count={snapshot.summary.sourceCounts[source]}
+                >
+                  {mergedSourceCounts[source]}
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
 
         <form class="filter-panel" id="game-filters" aria-label="筛选游戏" novalidate>
@@ -240,13 +270,6 @@ const ringSegments = achievementSegments.map((segment) => {
               {genres.map((genre) => <option value={genre.toLocaleLowerCase("zh-CN")}>{genre}</option>)}
             </select>
           </label>
-          <label class="filter-control" for="platform-filter">
-            <span>平台</span>
-            <select id="platform-filter">
-              <option value="">全部平台</option>
-              {availablePlatforms.map((platform) => <option value={platform}>{platformNames[platform]}</option>)}
-            </select>
-          </label>
           <label class="filter-control" for="achievement-filter">
             <span>成就</span>
             <select id="achievement-filter">
@@ -254,7 +277,8 @@ const ringSegments = achievementSegments.map((segment) => {
               <option value="perfect">全成就</option>
               <option value="progress">进行中</option>
               <option value="untouched">尚未解锁</option>
-              <option value="none">无 Steam 成就</option>
+              <option value="none">无成就</option>
+              <option value="unsupported">平台未提供</option>
               <option value="unavailable">暂不可用</option>
             </select>
           </label>
@@ -267,7 +291,7 @@ const ringSegments = achievementSegments.map((segment) => {
               <option value="name">游戏名称</option>
             </select>
           </label>
-          <button class="filter-reset" type="reset">重置</button>
+          <button class="filter-reset" type="reset">重置筛选</button>
         </form>
 
         <fieldset class="library-view-settings" id="library-view-settings">
@@ -293,18 +317,17 @@ const ringSegments = achievementSegments.map((segment) => {
             </label>
             <label class="view-toggle view-toggle--clean">
               <input id="view-clean" type="checkbox" aria-controls="library-grid" />
-              <span>纯净模式</span>
-              <small>只显示封面</small>
+              <span>纯净模式</span><small>只显示封面</small>
             </label>
             <button class="view-reset" id="view-reset" type="button">恢复默认</button>
           </div>
-          <p class="library-view-settings__hint">设置会保存在当前浏览器；小屏幕会自动调整列数。</p>
+          <p class="library-view-settings__hint">卡片设置与展示模式会保存在当前浏览器；小屏幕会自动调整列数。</p>
           <span class="sr-only" id="library-view-announcement" aria-live="polite"></span>
         </fieldset>
 
         <div class="library-status">
-          <p id="library-result-count" aria-live="polite">共 {games.length} 款游戏</p>
-          <p>每次显示 {siteConfig.pageSize} 款</p>
+          <p id="library-result-count" aria-live="polite">共 {mergedGames.length} 款游戏</p>
+          <p id="library-page-size">每次显示 {siteConfig.pageSize} 款游戏</p>
         </div>
 
         <div
@@ -315,14 +338,28 @@ const ringSegments = achievementSegments.map((segment) => {
           data-show-achievements="true"
           data-show-tags="true"
           data-clean="false"
+          data-active-mode="merged"
         >
-          {libraryGames.map((game) => <GameCard game={game} href={gameHref(game)} />)}
+          <noscript>
+            <div class="library-noscript-heading">
+              <h3>合并记录</h3>
+              <p>同一款游戏的跨平台记录合并展示。</p>
+            </div>
+          </noscript>
+          {mergedGames.map((game) => <GameCard game={game} href={gameHref(game.canonicalId)} viewMode="merged" />)}
+          <noscript>
+            <div class="library-noscript-heading">
+              <h3>分平台记录</h3>
+              <p>每个平台来源各自保留一条记录。</p>
+            </div>
+          </noscript>
+          {platformGames.map((game) => <GameCard game={game} href={gameHref(game.canonicalId)} viewMode="platform" />)}
         </div>
 
         <div class="library-empty" id="library-empty" hidden>
           <Icon name="search" size={26} />
           <strong>没有找到匹配的游戏</strong>
-          <span>换个关键词或减少筛选条件试试。</span>
+          <span>换个关键词、平台或减少筛选条件试试。</span>
         </div>
         <button class="load-more" id="load-more" type="button" hidden aria-label="显示更多游戏；向下滚动时会自动加载">
           显示更多游戏 <span aria-hidden="true">↓</span>
@@ -343,19 +380,25 @@ const ringSegments = achievementSegments.map((segment) => {
     type LibraryPreferences
   } from "../utils/library-preferences";
 
+  type LibraryMode = "merged" | "platform";
+
   const libraryPreferencesKey = "game-wall:library-view:v1";
+  const libraryModeKey = "game-wall:library-mode:v2";
   const grid = document.querySelector<HTMLElement>("#library-grid");
   const form = document.querySelector<HTMLFormElement>("#game-filters");
 
   if (grid && form) {
     const search = form.querySelector<HTMLInputElement>("#game-search");
     const genre = form.querySelector<HTMLSelectElement>("#genre-filter");
-    const platform = form.querySelector<HTMLSelectElement>("#platform-filter");
     const achievement = form.querySelector<HTMLSelectElement>("#achievement-filter");
     const sort = form.querySelector<HTMLSelectElement>("#sort-games");
+    const modeButtons = Array.from(document.querySelectorAll<HTMLButtonElement>("[data-library-mode-button]"));
+    const sourceButtons = Array.from(document.querySelectorAll<HTMLButtonElement>("[data-source-filter]"));
     const loadMore = document.querySelector<HTMLButtonElement>("#load-more");
     const empty = document.querySelector<HTMLElement>("#library-empty");
     const count = document.querySelector<HTMLElement>("#library-result-count");
+    const total = document.querySelector<HTMLElement>("#library-total");
+    const pageSizeLabel = document.querySelector<HTMLElement>("#library-page-size");
     const viewAchievements = document.querySelector<HTMLInputElement>("#view-achievements");
     const viewTags = document.querySelector<HTMLInputElement>("#view-tags");
     const viewColumns = document.querySelector<HTMLSelectElement>("#view-columns");
@@ -368,8 +411,10 @@ const ringSegments = achievementSegments.map((segment) => {
     let visibleLimit = pageSize;
     let isLoadingMore = false;
     let preferences: LibraryPreferences = { ...defaultLibraryPreferences };
+    let mode: LibraryMode = "merged";
+    let selectedSource = "all";
 
-    const numberFrom = (card: HTMLElement, key: string) => Number(card.dataset[key] || 0);
+    const numberFrom = (card: HTMLElement, key: string) => Number(card.dataset[key] ?? -1);
 
     const readPreferences = () => {
       try {
@@ -379,11 +424,27 @@ const ringSegments = achievementSegments.map((segment) => {
       }
     };
 
+    const readMode = (): LibraryMode => {
+      try {
+        return window.localStorage.getItem(libraryModeKey) === "platform" ? "platform" : "merged";
+      } catch {
+        return "merged";
+      }
+    };
+
     const savePreferences = (value: LibraryPreferences) => {
       try {
         window.localStorage.setItem(libraryPreferencesKey, JSON.stringify(value));
       } catch {
         // Storage can be unavailable in strict privacy modes; the current view still works.
+      }
+    };
+
+    const saveMode = (value: LibraryMode) => {
+      try {
+        window.localStorage.setItem(libraryModeKey, value);
+      } catch {
+        // The mode still works for the current page when storage is unavailable.
       }
     };
 
@@ -418,24 +479,24 @@ const ringSegments = achievementSegments.map((segment) => {
       if (resetPage) visibleLimit = pageSize;
       const query = search?.value.trim().toLocaleLowerCase("zh-CN") ?? "";
       const selectedGenre = genre?.value ?? "";
-      const selectedPlatform = platform?.value ?? "";
       const selectedAchievement = achievement?.value ?? "";
       const selectedSort = sort?.value ?? "recent";
+      const modeCards = cards.filter((card) => card.dataset.viewMode === mode);
 
-      const matching = cards.filter((card) => {
+      const matching = modeCards.filter((card) => {
         const matchesSearch = !query || (card.dataset.search ?? "").includes(query);
         const matchesGenre = !selectedGenre || (card.dataset.genres ?? "").split("|").includes(selectedGenre);
-        const matchesPlatform = !selectedPlatform || (card.dataset.platforms ?? "").split(" ").includes(selectedPlatform);
+        const matchesSource = selectedSource === "all" || (card.dataset.sources ?? "").split(" ").includes(selectedSource);
         const matchesAchievement = !selectedAchievement || card.dataset.achievement === selectedAchievement;
-        return matchesSearch && matchesGenre && matchesPlatform && matchesAchievement;
+        return matchesSearch && matchesGenre && matchesSource && matchesAchievement;
       });
 
-      matching.sort((a, b) => {
-        if (selectedSort === "playtime") return numberFrom(b, "playtime") - numberFrom(a, "playtime");
-        if (selectedSort === "completion") return numberFrom(b, "completion") - numberFrom(a, "completion");
-        if (selectedSort === "name") return (a.dataset.name ?? "").localeCompare(b.dataset.name ?? "", "zh-CN");
-        const recentDifference = numberFrom(b, "lastPlayed") - numberFrom(a, "lastPlayed");
-        return recentDifference || (originalOrder.get(a) ?? 0) - (originalOrder.get(b) ?? 0);
+      matching.sort((left, right) => {
+        if (selectedSort === "playtime") return numberFrom(right, "playtime") - numberFrom(left, "playtime");
+        if (selectedSort === "completion") return numberFrom(right, "completion") - numberFrom(left, "completion");
+        if (selectedSort === "name") return (left.dataset.name ?? "").localeCompare(right.dataset.name ?? "", "zh-CN");
+        return numberFrom(right, "lastPlayed") - numberFrom(left, "lastPlayed")
+          || (originalOrder.get(left) ?? 0) - (originalOrder.get(right) ?? 0);
       });
 
       const matchingSet = new Set(matching);
@@ -445,11 +506,15 @@ const ringSegments = achievementSegments.map((segment) => {
       cards.filter((card) => !matchingSet.has(card)).forEach((card) => { card.hidden = true; });
 
       const shown = Math.min(matching.length, visibleLimit);
-      if (count) count.textContent = matching.length === cards.length
-        ? `显示 ${shown} / ${cards.length} 款游戏`
-        : `找到 ${matching.length} 款，已显示 ${shown} 款`;
+      const resultUnit = mode === "merged" ? "款游戏" : "条记录";
+      if (count) count.textContent = matching.length === modeCards.length
+        ? `显示 ${shown} / ${modeCards.length} ${resultUnit}`
+        : `找到 ${matching.length} ${resultUnit}，已显示 ${shown} ${resultUnit}`;
+      if (total) total.textContent = `${modeCards.length} ${mode === "merged" ? "GAMES" : "RECORDS"}`;
+      if (pageSizeLabel) pageSizeLabel.textContent = `每次显示 ${pageSize} ${resultUnit}`;
       if (empty) empty.hidden = matching.length !== 0;
       if (loadMore) loadMore.hidden = matching.length <= visibleLimit;
+      refreshDashboardLayout();
       return matching;
     };
 
@@ -463,6 +528,36 @@ const ringSegments = achievementSegments.map((segment) => {
       animateLibraryUpdate(matching.slice(0, visibleLimit));
     };
 
+    const setMode = (value: LibraryMode, persist = true) => {
+      mode = value;
+      grid.dataset.activeMode = value;
+      modeButtons.forEach((button) => {
+        button.setAttribute("aria-pressed", String(button.dataset.libraryModeButton === value));
+      });
+      sourceButtons.forEach((button) => {
+        const sourceCount = button.querySelector<HTMLElement>("[data-source-count]");
+        if (!sourceCount) return;
+        sourceCount.textContent = value === "merged"
+          ? sourceCount.dataset.mergedCount ?? "0"
+          : sourceCount.dataset.platformCount ?? "0";
+      });
+      if (persist) saveMode(value);
+      if (viewAnnouncement) {
+        viewAnnouncement.textContent = value === "merged"
+          ? "已切换到合并展示，同一游戏只显示一次。"
+          : "已切换到分平台展示，每条来源记录单独显示。";
+      }
+      updateAndAnimate();
+    };
+
+    const setSource = (value: string) => {
+      selectedSource = value;
+      sourceButtons.forEach((button) => {
+        button.setAttribute("aria-pressed", String(button.dataset.sourceFilter === value));
+      });
+      updateAndAnimate();
+    };
+
     const loadNextPage = (moveFocus = false) => {
       if (!loadMore || loadMore.hidden || isLoadingMore) return;
       isLoadingMore = true;
@@ -472,8 +567,7 @@ const ringSegments = achievementSegments.map((segment) => {
       const previouslyVisible = visibleLimit;
       visibleLimit += pageSize;
       const matching = updateLibrary();
-      const visibleCards = Array.from(grid.querySelectorAll<HTMLElement>("[data-game-card]:not([hidden])"));
-      const focusTarget = visibleCards[previouslyVisible]?.querySelector<HTMLAnchorElement>("a");
+      const focusTarget = matching[previouslyVisible]?.querySelector<HTMLAnchorElement>("a");
 
       animateLibraryUpdate(matching.slice(previouslyVisible, visibleLimit), () => {
         isLoadingMore = false;
@@ -484,32 +578,27 @@ const ringSegments = achievementSegments.map((segment) => {
     };
 
     search?.addEventListener("input", updateAndAnimate);
-    [genre, platform, achievement, sort].forEach((control) => control?.addEventListener("change", updateAndAnimate));
+    [genre, achievement, sort].forEach((control) => control?.addEventListener("change", updateAndAnimate));
     form.addEventListener("submit", (event) => event.preventDefault());
     form.addEventListener("reset", () => window.setTimeout(updateAndAnimate, 0));
+    modeButtons.forEach((button) => button.addEventListener("click", () => {
+      setMode(button.dataset.libraryModeButton === "platform" ? "platform" : "merged");
+    }));
+    sourceButtons.forEach((button) => button.addEventListener("click", () => setSource(button.dataset.sourceFilter ?? "all")));
     loadMore?.addEventListener("click", () => loadNextPage(true));
 
-    viewAchievements?.addEventListener("change", () => {
-      applyPreferences({ ...preferences, showAchievements: viewAchievements.checked });
-    });
-    viewTags?.addEventListener("change", () => {
-      applyPreferences({ ...preferences, showTags: viewTags.checked });
-    });
-    viewColumns?.addEventListener("change", () => {
-      applyPreferences({ ...preferences, columns: Number(viewColumns.value) });
-    });
-    viewClean?.addEventListener("change", () => {
-      applyPreferences({ ...preferences, clean: viewClean.checked });
-    });
+    viewAchievements?.addEventListener("change", () => applyPreferences({ ...preferences, showAchievements: viewAchievements.checked }));
+    viewTags?.addEventListener("change", () => applyPreferences({ ...preferences, showTags: viewTags.checked }));
+    viewColumns?.addEventListener("change", () => applyPreferences({ ...preferences, columns: Number(viewColumns.value) }));
+    viewClean?.addEventListener("change", () => applyPreferences({ ...preferences, clean: viewClean.checked }));
     viewReset?.addEventListener("click", () => applyPreferences(defaultLibraryPreferences));
     window.addEventListener("storage", (event) => {
-      if (event.key === libraryPreferencesKey) {
-        applyPreferences(parseStoredLibraryPreferences(event.newValue), false);
-      }
+      if (event.key === libraryPreferencesKey) applyPreferences(parseStoredLibraryPreferences(event.newValue), false);
+      if (event.key === libraryModeKey) setMode(event.newValue === "platform" ? "platform" : "merged", false);
     });
 
     applyPreferences(readPreferences(), false, false);
-    updateLibrary();
+    setMode(readMode(), false);
 
     if (loadMore && "IntersectionObserver" in window) {
       const loadObserver = new IntersectionObserver(
