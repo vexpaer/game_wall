@@ -63,21 +63,29 @@ jobs:
             steam-store-v2-${{ runner.os }}-${{ vars.STEAM_LANGUAGE || 'schinese' }}-
 
       - name: Set up Python for Epic
+        id: setup_epic
         if: ${{ vars.EPIC_SYNC_ENABLED == 'true' }}
+        continue-on-error: true
         uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
       - name: Install pinned Legendary client
-        if: ${{ vars.EPIC_SYNC_ENABLED == 'true' }}
+        id: install_epic
+        if: ${{ vars.EPIC_SYNC_ENABLED == 'true' && steps.setup_epic.outcome == 'success' }}
+        continue-on-error: true
         run: python -m pip install --disable-pip-version-check "legendary-gl==0.20.34"
 
       - name: Install pinned nxapi client
+        id: install_nxapi
         if: ${{ vars.SWITCH_SYNC_MODE == 'nxapi' }}
+        continue-on-error: true
         run: npm install --global "nxapi@1.6.1"
 
       - name: Restore encrypted Switch binding
-        if: ${{ vars.SWITCH_SYNC_MODE == 'nxapi' }}
+        id: restore_switch
+        if: ${{ vars.SWITCH_SYNC_MODE == 'nxapi' && steps.install_nxapi.outcome == 'success' }}
+        continue-on-error: true
         shell: bash
         env:
           GAME_WALL_STATE_KEY: ${{ secrets.SWITCH_STATE_KEY }}
@@ -101,7 +109,9 @@ jobs:
           touch "$RUNNER_TEMP/game-wall-nxapi-restored"
 
       - name: Fetch Switch daily summaries
-        if: ${{ vars.SWITCH_SYNC_MODE == 'nxapi' }}
+        id: fetch_switch
+        if: ${{ vars.SWITCH_SYNC_MODE == 'nxapi' && steps.restore_switch.outcome == 'success' }}
+        continue-on-error: true
         shell: bash
         env:
           DEBUG: ""
@@ -124,8 +134,16 @@ jobs:
           echo "SWITCH_IMPORT_FILE=$RUNNER_TEMP/switch-import.json" >> "$GITHUB_ENV"
           echo "SWITCH_IMPORT_FORMAT=json" >> "$GITHUB_ENV"
 
+      - name: Mark Switch provider unavailable
+        if: ${{ always() && vars.SWITCH_SYNC_MODE == 'nxapi' && (steps.install_nxapi.outcome != 'success' || steps.restore_switch.outcome != 'success' || steps.fetch_switch.outcome != 'success') }}
+        shell: bash
+        run: |
+          echo "::warning::Switch sync is unavailable; continuing with other providers."
+          echo "SWITCH_PROVIDER_UNAVAILABLE=true" >> "$GITHUB_ENV"
+
       - name: Re-encrypt refreshed Switch binding
-        if: ${{ always() && vars.SWITCH_SYNC_MODE == 'nxapi' }}
+        if: ${{ always() && vars.SWITCH_SYNC_MODE == 'nxapi' && steps.restore_switch.outcome == 'success' }}
+        continue-on-error: true
         shell: bash
         env:
           GAME_WALL_STATE_KEY: ${{ secrets.SWITCH_STATE_KEY }}
@@ -171,7 +189,9 @@ jobs:
           echo "SWITCH_IMPORT_FORMAT=$CONFIGURED_SWITCH_IMPORT_FORMAT" >> "$GITHUB_ENV"
 
       - name: Restore encrypted Epic binding
-        if: ${{ vars.EPIC_SYNC_ENABLED == 'true' }}
+        id: restore_epic
+        if: ${{ vars.EPIC_SYNC_ENABLED == 'true' && steps.install_epic.outcome == 'success' }}
+        continue-on-error: true
         shell: bash
         env:
           GAME_WALL_STATE_KEY: ${{ secrets.EPIC_STATE_KEY }}
@@ -183,6 +203,13 @@ jobs:
           test -f data/credentials/epic-user.enc
           npm run state -- decrypt data/credentials/epic-user.enc "$LEGENDARY_CONFIG_PATH/user.json"
           touch "$RUNNER_TEMP/game-wall-epic-restored"
+
+      - name: Mark Epic provider unavailable
+        if: ${{ always() && vars.EPIC_SYNC_ENABLED == 'true' && (steps.setup_epic.outcome != 'success' || steps.install_epic.outcome != 'success' || steps.restore_epic.outcome != 'success') }}
+        shell: bash
+        run: |
+          echo "::warning::Epic sync is unavailable; continuing with other providers."
+          echo "EPIC_PROVIDER_UNAVAILABLE=true" >> "$GITHUB_ENV"
 
       - name: Fetch all configured game libraries
         env:
@@ -199,10 +226,12 @@ jobs:
           SWITCH_DISPLAY_NAME: ${{ vars.SWITCH_DISPLAY_NAME }}
           SWITCH_ACCOUNT_ID: ${{ vars.SWITCH_ACCOUNT_ID }}
           SWITCH_DEVICE: ${{ vars.SWITCH_DEVICE || 'Nintendo Switch Lite' }}
+          SWITCH_SYNC_CONFIGURED: ${{ vars.SWITCH_SYNC_MODE == 'nxapi' || vars.SWITCH_IMPORT_FILE != '' }}
         run: npm run library:sync
 
       - name: Re-encrypt rotated Epic binding
-        if: ${{ always() && vars.EPIC_SYNC_ENABLED == 'true' }}
+        if: ${{ always() && vars.EPIC_SYNC_ENABLED == 'true' && steps.restore_epic.outcome == 'success' }}
+        continue-on-error: true
         shell: bash
         env:
           GAME_WALL_STATE_KEY: ${{ secrets.EPIC_STATE_KEY }}
