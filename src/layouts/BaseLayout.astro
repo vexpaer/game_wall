@@ -26,7 +26,7 @@ const faviconHref = `${base}favicon.svg`;
 ---
 
 <!doctype html>
-<html lang={siteConfig.language}>
+<html lang={siteConfig.language} data-boot-state="pending">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -47,22 +47,53 @@ const faviconHref = `${base}favicon.svg`;
   </head>
   <body>
     <a class="skip-link" href="#main-content">跳到主要内容</a>
+    <div class="boot-screen" hidden aria-hidden="true">
+      <div class="boot-screen__panel">
+        <p class="boot-screen__code">GW://PLAYER_ARCHIVE</p>
+        <div class="boot-screen__brand"><span>VEX</span><span>PAER</span></div>
+        <div class="boot-screen__status">
+          <span>正在载入玩家宇宙</span>
+          <span>READY</span>
+        </div>
+        <div class="boot-screen__bar"><i></i></div>
+      </div>
+    </div>
+    <div class="ambient-stage" aria-hidden="true">
+      <span class="ambient-orb ambient-orb--pink"></span>
+      <span class="ambient-orb ambient-orb--cyan"></span>
+      <span class="ambient-orb ambient-orb--acid"></span>
+      <span class="ambient-grid"></span>
+      <span class="ambient-noise"></span>
+    </div>
+    <div class="scroll-progress" aria-hidden="true"><span></span></div>
+    <div class="cursor-aura" aria-hidden="true"><i></i></div>
     <div class="site-shell">
       <header class="site-header">
-        <a class="brand" href={homeHref} aria-label="vexpaer 游戏记录首页">
+        <a class="brand" href={homeHref} aria-label="vexpaer 游戏记录首页" data-magnetic>
           <span class="brand-mark" aria-hidden="true"><Icon name="gamepad" size={22} /></span>
           <span class="brand-copy">
             <strong>vexpaer</strong>
-            <small>STEAM GAME LOG</small>
+            <small>PLAYER ARCHIVE // 01</small>
           </span>
         </a>
         <nav class="site-nav" aria-label="主要导航">
-          <a href={homeHref}>概览</a>
-          <a href={libraryHref}>游戏库</a>
-          <a href={dataHref}>关于数据</a>
+          <a href={homeHref}><span>01</span>概览</a>
+          <a href={libraryHref}><span>02</span>游戏库</a>
+          <a href={dataHref}><span>03</span>关于数据</a>
         </nav>
-        <span class="live-badge"><span aria-hidden="true"></span> Steam 数据驱动</span>
+        <span class="live-badge"><span aria-hidden="true"></span> LIVE DATA FEED</span>
       </header>
+
+      <div class="signal-strip" aria-hidden="true">
+        <div class="signal-strip__track">
+          <span class="signal-strip__group">
+            <b>PLAY HARD</b><i>✦</i><b>TRACK EVERYTHING</b><i>✦</i><b>ACHIEVEMENT HUNTER</b><i>✦</i><b>STEAM UNIVERSE ONLINE</b><i>✦</i>
+          </span>
+          <span class="signal-strip__group">
+            <b>PLAY HARD</b><i>✦</i><b>TRACK EVERYTHING</b><i>✦</i><b>ACHIEVEMENT HUNTER</b><i>✦</i><b>STEAM UNIVERSE ONLINE</b><i>✦</i>
+          </span>
+        </div>
+      </div>
 
       <main id="main-content">
         <slot />
@@ -79,5 +110,8 @@ const faviconHref = `${base}favicon.svg`;
         <p class="data-note">数据来自 Steam。本站与 Valve Corporation 无隶属或背书关系。</p>
       </footer>
     </div>
+    <script>
+      import "../scripts/site-effects";
+    </script>
   </body>
 </html>

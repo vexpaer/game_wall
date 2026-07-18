@@ -80,22 +80,57 @@ const lastPlayed = game.lastPlayedAt ? Date.parse(game.lastPlayedAt) || 0 : 0;
 
 <style>
   .game-card {
+    position: relative;
+    isolation: isolate;
     min-width: 0;
     overflow: hidden;
-    border: 1px solid var(--line);
+    border: 1px solid rgba(229, 218, 255, 0.14);
     border-radius: var(--radius);
     background:
-      linear-gradient(145deg, rgba(255, 255, 255, 0.025), transparent 54%),
-      var(--surface);
-    box-shadow: 0 20px 48px rgba(0, 0, 0, 0.2);
-    transition: border-color 180ms ease, transform 180ms ease, box-shadow 180ms ease;
+      radial-gradient(circle at 100% 0, rgba(255, 78, 205, 0.09), transparent 12rem),
+      linear-gradient(145deg, rgba(95, 245, 255, 0.045), transparent 54%),
+      rgba(15, 9, 25, 0.92);
+    box-shadow: 0 22px 52px rgba(0, 0, 0, 0.25);
+    transform-style: preserve-3d;
+    transition: border-color 180ms ease, box-shadow 180ms ease;
+  }
+
+  .game-card::before {
+    position: absolute;
+    top: 0;
+    right: 16px;
+    left: 16px;
+    z-index: 4;
+    height: 2px;
+    pointer-events: none;
+    content: "";
+    opacity: 0.68;
+    background: linear-gradient(90deg, transparent, var(--cyan), var(--pink), transparent);
+    box-shadow: 0 0 14px rgba(95, 245, 255, 0.24);
+  }
+
+  .game-card::after {
+    position: absolute;
+    inset: -80% -35%;
+    z-index: 3;
+    pointer-events: none;
+    content: "";
+    opacity: 0;
+    background: linear-gradient(105deg, transparent 42%, rgba(255, 255, 255, 0.14) 49%, transparent 56%);
+    transform: translateX(-34%) rotate(8deg);
+    transition: opacity 220ms ease, transform 720ms cubic-bezier(.16, 1, .3, 1);
   }
 
   .game-card:hover,
   .game-card:focus-within {
-    border-color: var(--line-strong);
-    transform: translateY(-3px);
-    box-shadow: 0 26px 56px rgba(0, 0, 0, 0.3), 0 0 0 3px rgba(255, 138, 101, 0.08);
+    border-color: rgba(95, 245, 255, 0.46);
+    box-shadow: 0 30px 70px rgba(0, 0, 0, 0.38), 0 0 0 3px rgba(95, 245, 255, 0.07), 0 0 42px rgba(255, 78, 205, 0.08);
+  }
+
+  .game-card:hover::after,
+  .game-card:focus-within::after {
+    opacity: 1;
+    transform: translateX(35%) rotate(8deg);
   }
 
   .game-card__link {
@@ -128,11 +163,12 @@ const lastPlayed = game.lastPlayedAt ? Date.parse(game.lastPlayedAt) || 0 : 0;
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: transform 400ms ease;
+    transition: scale 500ms cubic-bezier(.16, 1, .3, 1), filter 300ms ease;
   }
 
   .game-card:hover .game-card__art > img:not(.game-card__icon) {
-    transform: scale(1.025);
+    scale: 1.045;
+    filter: saturate(1.15) contrast(1.04);
   }
 
   .game-card__art--fallback {
@@ -172,10 +208,10 @@ const lastPlayed = game.lastPlayedAt ? Date.parse(game.lastPlayedAt) || 0 : 0;
     bottom: 10px;
     z-index: 1;
     padding: 3px 7px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(95, 245, 255, 0.2);
     border-radius: 5px;
     color: rgba(255, 255, 255, 0.7);
-    background: rgba(7, 6, 9, 0.68);
+    background: rgba(5, 2, 10, 0.72);
     backdrop-filter: blur(7px);
     font-size: 0.58rem;
     letter-spacing: 0.08em;
@@ -222,13 +258,15 @@ const lastPlayed = game.lastPlayedAt ? Date.parse(game.lastPlayedAt) || 0 : 0;
     border: 1px solid var(--line);
     border-radius: 9px;
     color: var(--muted);
-    transition: color 180ms ease, background 180ms ease;
+    transition: color 180ms ease, background 180ms ease, border-color 180ms ease, rotate 220ms ease;
   }
 
   .game-card:hover .game-card__arrow,
   .game-card:focus-within .game-card__arrow {
     color: var(--cyan);
-    background: rgba(255, 138, 101, 0.09);
+    border-color: rgba(95, 245, 255, 0.28);
+    background: rgba(95, 245, 255, 0.09);
+    rotate: 8deg;
   }
 
   .game-card__tags {
@@ -243,13 +281,15 @@ const lastPlayed = game.lastPlayedAt ? Date.parse(game.lastPlayedAt) || 0 : 0;
     padding: 3px 7px;
     border-radius: 5px;
     color: var(--muted-strong);
-    background: rgba(208, 200, 212, 0.08);
+    border: 1px solid rgba(229, 218, 255, 0.08);
+    background: rgba(208, 200, 212, 0.055);
     font-size: 0.62rem;
   }
 
   .game-card__tags .game-card__recent {
     color: var(--lime);
-    background: rgba(99, 230, 176, 0.09);
+    border-color: rgba(202, 255, 72, 0.14);
+    background: rgba(202, 255, 72, 0.07);
   }
 
   .game-card__achievement {

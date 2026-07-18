@@ -22,7 +22,8 @@
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.7.3",
-    "astro": "^7.0.7"
+    "astro": "^7.0.7",
+    "gsap": "^3.15.0"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.9",

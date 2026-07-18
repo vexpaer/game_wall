@@ -55,38 +55,60 @@ const ringSegments = achievementSegments.map((segment) => {
   {isReady ? (
     <div class="dashboard">
       <section class="dashboard-hero" aria-labelledby="dashboard-title">
+        <div class="dashboard-hero__beam dashboard-hero__beam--one" aria-hidden="true"></div>
+        <div class="dashboard-hero__beam dashboard-hero__beam--two" aria-hidden="true"></div>
         <div class="dashboard-hero__copy">
-          <h1 id="dashboard-title"><span>vexpaer</span><br />游戏记录</h1>
+          <p class="dashboard-hero__eyebrow"><i aria-hidden="true"></i> PLAYER PROFILE / UNIVERSE 01</p>
+          <h1 id="dashboard-title">
+            <span class="hero-title-line hero-title-line--solid">VEXPAER'S</span>
+            <span class="hero-title-line hero-title-line--outline">GAME</span>
+            <span class="hero-title-line hero-title-line--accent">DIMENSION</span>
+          </h1>
+          <p class="dashboard-hero__lead">把每一次开局、每一小时沉浸和每一枚成就，压缩成一座持续闪烁的玩家宇宙。</p>
           <div class="dashboard-hero__meta">
             <span><Icon name="calendar" size={16} /> 更新于 {formatDate(snapshot.generatedAt, true)}</span>
             <span><Icon name="grid" size={16} /> {snapshot.summary.playedGames} 款玩过的游戏</span>
           </div>
         </div>
 
-        <aside class="profile-card" aria-label="Steam 玩家资料">
-          <div class="profile-card__scanline" aria-hidden="true"></div>
-          <div class="profile-card__top">
-            {profile?.avatarUrl ? (
-              <img src={profile.avatarUrl} width="96" height="96" alt={`${profile.personaName} 的 Steam 头像`} />
-            ) : (
-              <span class="profile-card__fallback" aria-hidden="true"><Icon name="user" size={32} /></span>
-            )}
-            <div>
-              <span class="profile-card__eyebrow"><i aria-hidden="true"></i> PUBLIC PROFILE</span>
-              <h2>{profile?.personaName ?? `Steam 玩家 ${snapshot.steamId}`}</h2>
-              <p>Steam ID · {snapshot.steamId}</p>
+        <div class="dashboard-hero__visual">
+          <div class="hero-orbit" aria-hidden="true"><i></i><i></i><span>01</span></div>
+          <div class="hero-game-stack" aria-hidden="true">
+            {recentGames.slice(0, 3).map((game, index) => game.store.headerImageUrl && (
+              <div class={`hero-game-stack__card hero-game-stack__card--${index + 1}`}>
+                <img src={game.store.headerImageUrl} alt="" width="460" height="215" loading="eager" decoding="async" />
+                <span>{String(index + 1).padStart(2, "0")}</span>
+              </div>
+            ))}
+          </div>
+
+          <aside class="profile-card" aria-label="Steam 玩家资料">
+            <div class="profile-card__scanline" aria-hidden="true"></div>
+            <span class="profile-card__serial" aria-hidden="true">PLAYER // 01</span>
+            <div class="profile-card__top">
+              <span class="profile-card__avatar" aria-hidden="true">
+                <span class="profile-card__fallback"><Icon name="user" size={32} /></span>
+                {profile?.avatarUrl && (
+                  <img src={profile.avatarUrl} width="96" height="96" alt="" data-profile-avatar />
+                )}
+              </span>
+              <div>
+                <span class="profile-card__eyebrow"><i aria-hidden="true"></i> PUBLIC PROFILE</span>
+                <h2>{profile?.personaName ?? `Steam 玩家 ${snapshot.steamId}`}</h2>
+                <p>Steam ID · {snapshot.steamId}</p>
+              </div>
             </div>
-          </div>
-          <div class="profile-card__stats">
-            <div><strong>{formatDuration(snapshot.summary.recentMinutes)}</strong><span>近两周</span></div>
-            <div><strong>{snapshot.summary.perfectGames}</strong><span>全成就游戏</span></div>
-          </div>
-          {profile?.profileUrl && (
-            <a class="profile-card__link" href={profile.profileUrl} target="_blank" rel="noreferrer">
-              打开 Steam 个人资料 <Icon name="arrow-up-right" size={17} />
-            </a>
-          )}
-        </aside>
+            <div class="profile-card__stats">
+              <div><strong>{formatDuration(snapshot.summary.recentMinutes)}</strong><span>近两周</span></div>
+              <div><strong>{snapshot.summary.perfectGames}</strong><span>全成就游戏</span></div>
+            </div>
+            {profile?.profileUrl && (
+              <a class="profile-card__link" href={profile.profileUrl} target="_blank" rel="noreferrer">
+                打开 Steam 个人资料 <Icon name="arrow-up-right" size={17} />
+              </a>
+            )}
+          </aside>
+        </div>
       </section>
 
       <section class="metrics" aria-label="游戏数据概览">
@@ -95,6 +117,16 @@ const ringSegments = achievementSegments.map((segment) => {
         <MetricCard label="近两周游戏时间" value={formatDuration(snapshot.summary.recentMinutes)} detail="Steam 近期活动" icon="spark" tone="lime" />
         <MetricCard label="加权成就完成率" value={`${Math.round(clampPercentage(snapshot.summary.achievementPercentage))}%`} detail={`${snapshot.summary.unlockedAchievements} / ${snapshot.summary.totalAchievements} 项`} icon="trophy" tone="amber" />
         <MetricCard label="全成就游戏" value={snapshot.summary.perfectGames} detail="已完成全部 Steam 成就" icon="trophy" tone="lime" />
+      </section>
+
+      <section class="manifesto" aria-label="玩家宣言">
+        <div class="manifesto__track" aria-hidden="true">
+          <span>PLAY.</span><span>TRACK.</span><span>CONQUER.</span><span>REPEAT.</span>
+        </div>
+        <div class="manifesto__note">
+          <span>NO PAUSE // JUST PROGRESS</span>
+          <p>时间不是消失了，它只是变成了地图、Boss 战和闪亮的成就图标。</p>
+        </div>
       </section>
 
       <section class="page-section" aria-labelledby="recent-title">
@@ -301,6 +333,7 @@ const ringSegments = achievementSegments.map((segment) => {
 </BaseLayout>
 
 <script>
+  import { animateLibraryUpdate, initDashboardEffects, refreshDashboardLayout } from "../scripts/dashboard-effects";
   import {
     defaultLibraryPreferences,
     normalizeLibraryPreferences,
@@ -375,6 +408,7 @@ const ringSegments = achievementSegments.map((segment) => {
           ? `已启用纯净模式，桌面每行 ${preferences.columns} 款游戏。`
           : `显示设置已更新，桌面每行 ${preferences.columns} 款游戏。`;
       }
+      refreshDashboardLayout();
     };
 
     const updateLibrary = (resetPage = false) => {
@@ -416,18 +450,24 @@ const ringSegments = achievementSegments.map((segment) => {
       return matching;
     };
 
-    search?.addEventListener("input", () => updateLibrary(true));
-    [genre, platform, achievement, sort].forEach((control) => control?.addEventListener("change", () => updateLibrary(true)));
+    const updateAndAnimate = () => {
+      const matching = updateLibrary(true);
+      animateLibraryUpdate(matching.slice(0, visibleLimit));
+    };
+
+    search?.addEventListener("input", updateAndAnimate);
+    [genre, platform, achievement, sort].forEach((control) => control?.addEventListener("change", updateAndAnimate));
     form.addEventListener("submit", (event) => event.preventDefault());
-    form.addEventListener("reset", () => window.setTimeout(() => updateLibrary(true), 0));
+    form.addEventListener("reset", () => window.setTimeout(updateAndAnimate, 0));
     loadMore?.addEventListener("click", () => {
       const previouslyVisible = visibleLimit;
       visibleLimit += pageSize;
-      updateLibrary();
-      if (loadMore.hidden) {
-        const visibleCards = Array.from(grid.querySelectorAll<HTMLElement>("[data-game-card]:not([hidden])"));
-        visibleCards[previouslyVisible]?.querySelector<HTMLAnchorElement>("a")?.focus();
-      }
+      const matching = updateLibrary();
+      const visibleCards = Array.from(grid.querySelectorAll<HTMLElement>("[data-game-card]:not([hidden])"));
+      const focusTarget = visibleCards[previouslyVisible]?.querySelector<HTMLAnchorElement>("a");
+      animateLibraryUpdate(matching.slice(previouslyVisible, visibleLimit), () => {
+        if (loadMore.hidden) focusTarget?.focus();
+      });
     });
 
     viewAchievements?.addEventListener("change", () => {
@@ -452,4 +492,6 @@ const ringSegments = achievementSegments.map((segment) => {
     applyPreferences(readPreferences(), false, false);
     updateLibrary();
   }
+
+  initDashboardEffects();
 </script>
