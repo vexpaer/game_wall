@@ -206,7 +206,7 @@ npm run state -- decrypt <加密文件> <原始文件>
 
 `keygen` 不会覆盖已有密钥文件。为保持 CLI 通用，`encrypt` / `decrypt` 仍只从当前进程变量 `GAME_WALL_STATE_KEY` 读取密钥；本地操作时一次只把当前平台的文件内容临时载入该变量，完成后立即清理。Actions 则只在 Epic 步骤把 `EPIC_STATE_KEY` 映射到它，只在 Switch 步骤把 `SWITCH_STATE_KEY` 映射到它。
 
-下面的平台步骤都用 `Get-Content ... -Raw | gh secret set ...` 从文件经 stdin 传值。不要改成 `--body`，否则密钥可能出现在本机进程命令行中。
+下面的平台步骤都通过 `cmd /d /c "gh secret set ... < 密钥文件"` 把文件原始字节送入 stdin。不要使用 PowerShell 的 `Get-Content ... | gh secret set ...`：PowerShell 会向原生程序管道追加换行，使严格 Base64 密钥失效。也不要改成 `--body`，否则密钥可能出现在本机进程命令行中。
 
 ## Epic 一次性本地绑定
 
@@ -215,7 +215,7 @@ npm run state -- decrypt <加密文件> <原始文件>
 ```powershell
 # 仅首次绑定生成；已有 .epic-state-key 时跳过 keygen 并继续使用原文件
 npm run state -- keygen .epic-state-key
-Get-Content -LiteralPath ".epic-state-key" -Raw | gh secret set EPIC_STATE_KEY
+cmd /d /c "gh secret set EPIC_STATE_KEY < .epic-state-key"
 
 py -3 -m pip install "legendary-gl==0.20.34"
 
@@ -315,7 +315,7 @@ CSV 用户把文件名和 `SWITCH_IMPORT_FORMAT` 分别改为实际路径与 `cs
 ```powershell
 # 仅首次绑定生成；已有 .switch-state-key 时跳过 keygen 并继续使用原文件
 npm run state -- keygen .switch-state-key
-Get-Content -LiteralPath ".switch-state-key" -Raw | gh secret set SWITCH_STATE_KEY
+cmd /d /c "gh secret set SWITCH_STATE_KEY < .switch-state-key"
 
 npm install --global "nxapi@1.6.1"
 
