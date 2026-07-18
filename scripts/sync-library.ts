@@ -8,6 +8,7 @@ import { buildEpicProvider } from "./lib/epic-provider";
 import { loadLocalEnv } from "./lib/env";
 import { LegendaryClient } from "./lib/legendary-client";
 import { OpenXblClient } from "./lib/openxbl-client";
+import { collectProviderSnapshots, type ProviderDefinition } from "./lib/provider-runner";
 import { SteamClient } from "./lib/steam-client";
 import { StoreCache } from "./lib/store-cache";
 import {
@@ -154,23 +155,50 @@ async function main(): Promise<void> {
   loadLocalEnv();
   const now = new Date();
   const aliases = aliasesFromFile();
-  const providers = (await Promise.all([
-    steamProvider(aliases, now),
-    xboxProvider(aliases, now),
-    epicProvider(aliases, now),
-    Promise.resolve(switchProvider(aliases, now))
-  ])).filter((provider): provider is ProviderSnapshot => provider !== undefined);
-  if (providers.length === 0) {
+  const definitions: ProviderDefinition[] = [
+    {
+      source: "steam",
+      configured: Boolean(optionalEnv("STEAM_API_KEY") || optionalEnv("STEAM_USER")),
+      run: () => steamProvider(aliases, now)
+    },
+    {
+      source: "xbox",
+      configured: Boolean(optionalEnv("OPENXBL_API_KEY")),
+      run: () => xboxProvider(aliases, now)
+    },
+    {
+      source: "epic",
+      configured: enabled("EPIC_SYNC_ENABLED"),
+      run: () => enabled("EPIC_PROVIDER_UNAVAILABLE")
+        ? Promise.resolve(undefined)
+        : epicProvider(aliases, now)
+    },
+    {
+      source: "switch",
+      configured: Boolean(optionalEnv("SWITCH_IMPORT_FILE")) || enabled("SWITCH_SYNC_CONFIGURED"),
+      run: () => enabled("SWITCH_PROVIDER_UNAVAILABLE")
+        ? Promise.resolve(undefined)
+        : Promise.resolve(switchProvider(aliases, now))
+    }
+  ];
+  const collection = await collectProviderSnapshots(definitions);
+  if (collection.configuredCount === 0) {
     throw new Error("没有配置任何游戏平台；请先按 README 设置 Actions Secrets/Variables");
   }
-  const snapshot = assembleSnapshot(providers, now.toISOString());
+  if (collection.successfulCount === 0) {
+    throw new Error("所有已配置游戏平台本次同步均失败");
+  }
+  const snapshot = assembleSnapshot(collection.providers, now.toISOString());
   const outputPath = resolve(
     process.cwd(),
     optionalEnv("GAME_WALL_DATA_FILE") ?? "data/generated/site-snapshot.json"
   );
   writeSnapshot(outputPath, snapshot);
-  const sources = providers.map((provider) => provider.account.source as GameSource).join(" / ");
-  console.log(`多平台同步完成：${sources}，${snapshot.summary.uniqueGames} 款唯一游戏，${snapshot.summary.platformRecords} 条平台记录`);
+  const sources = collection.providers.map((provider) => provider.account.source as GameSource).join(" / ");
+  const degraded = collection.failedSources.length > 0
+    ? `；降级平台：${collection.failedSources.join(" / ")}`
+    : "";
+  console.log(`多平台同步完成：${sources}，${snapshot.summary.uniqueGames} 款唯一游戏，${snapshot.summary.platformRecords} 条平台记录${degraded}`);
 }
 
 main().catch((error: unknown) => {

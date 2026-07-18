@@ -27,6 +27,7 @@ Steam / OpenXBL / Legendary / Switch 导入或 nxapi
 ```
 
 - 浏览器只读取构建产物，不会接触平台凭据，也不会在用户访问页面时请求游戏平台。
+- 各平台同步相互隔离：单个平台安装、解密或拉取失败时，该平台在本次快照中标记为“同步暂不可用”，不包含该平台的新游戏记录；其他成功平台仍会构建并部署。只有所有已配置平台都失败、统一快照无效、凭据明文清理失败或站点构建失败时，工作流才会失败。
 - `data/generated/site-snapshot.json`、`dist/` 和原始凭据不提交到 Git；它们只存在于当前构建工作区。
 - Epic 与实验性 Switch 自动同步分别使用 `EPIC_STATE_KEY` 和 `SWITCH_STATE_KEY` 做 AES-256-GCM 加密；两把密钥必须独立生成，绝不能共用。仓库只提交 `data/credentials/*.enc`，解密密钥只存于各自的 GitHub Secret。
 - Actions Cache 只保存公开的 Steam Store 元数据；Pages artifact 不含凭据。唯一例外是密文推送连续三次失败时生成的 7 天恢复 artifact，它严格只包含 `data/credentials/*.enc`，仍须按敏感密文保护。
