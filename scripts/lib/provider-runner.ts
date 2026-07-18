@@ -1,5 +1,5 @@
 import type { GameSource } from "../../src/types/library";
-import type { ProviderSnapshot } from "./assemble-snapshot";
+import { assembleSnapshot, type ProviderSnapshot } from "./assemble-snapshot";
 
 export interface ProviderDefinition {
   source: GameSource;
@@ -45,6 +45,10 @@ export async function collectProviderSnapshots(
     try {
       const provider = await definition.run();
       if (provider) {
+        // Run the full schema and same-source collision checks before a
+        // provider can participate in the combined snapshot. Any rejection is
+        // isolated to this provider by the catch block below.
+        assembleSnapshot([provider], "2000-01-01T00:00:00.000Z");
         return { configured: true, succeeded: true, provider } as const;
       }
     } catch {
