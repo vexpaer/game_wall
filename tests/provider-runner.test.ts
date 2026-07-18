@@ -81,3 +81,30 @@ test("configured providers returning no snapshot are isolated as failures", asyn
   assert.equal(result.providers[0]?.account.source, "epic");
   assert.equal(result.providers[0]?.account.status, "unavailable");
 });
+
+test("provider-specific schema collisions do not block valid peers", async () => {
+  const duplicateEpic: ProviderSnapshot = {
+    account: { source: "epic", status: "ready" },
+    games: ["first", "second"].map((externalId) => ({
+      id: `epic:${externalId}`,
+      canonicalId: canonicalIdForGame("epic", externalId, "Duplicate Title"),
+      source: "epic" as const,
+      externalId,
+      name: "Duplicate Title",
+      ownership: "owned" as const,
+      playtime: {},
+      achievements: emptyAchievements(),
+      store: emptyStore(),
+      links: {}
+    }))
+  };
+  const result = await collectProviderSnapshots([
+    { source: "steam", configured: true, run: async () => steamProviderWithGame() },
+    { source: "epic", configured: true, run: async () => duplicateEpic }
+  ], () => undefined);
+
+  assert.equal(result.successfulCount, 1);
+  assert.deepEqual(result.failedSources, ["epic"]);
+  assert.equal(result.providers.find((provider) => provider.account.source === "epic")?.account.status, "unavailable");
+  assert.equal(assembleSnapshot(result.providers, "2026-07-19T00:00:00.000Z").status, "partial");
+});
