@@ -1,5 +1,5 @@
 ---
-import type { AchievementSummary } from "../types/steam";
+import type { AchievementSummary } from "../types/library";
 import { clampPercentage } from "../utils/format";
 
 interface Props {
@@ -12,12 +12,16 @@ const percentage = clampPercentage(achievements.percentage);
 const isPerfect = achievements.status === "available" && achievements.total > 0 && percentage >= 100;
 const label =
   achievements.status === "none"
-    ? "无 Steam 成就"
+    ? "无成就"
     : achievements.status === "unavailable"
       ? "成就暂不可用"
+      : achievements.status === "unsupported"
+        ? "平台未提供成就"
       : isPerfect
         ? `全成就 · ${achievements.unlocked}/${achievements.total}`
-        : `已解锁 ${achievements.unlocked} / ${achievements.total}`;
+        : achievements.total > 0
+          ? `已解锁 ${achievements.unlocked} / ${achievements.total}`
+          : "尚无可用成就";
 ---
 
 <div class:list={["achievement", compact && "achievement--compact", isPerfect && "achievement--perfect"]}>

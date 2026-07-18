@@ -1,43 +1,55 @@
 ---
-import type { SteamGame } from "../types/steam";
-import { formatDate, formatDuration } from "../utils/format";
+import type { GameRecord, LibraryGame } from "../types/library";
+import { sourceLabels } from "../utils/library";
+import { formatActivityDate, formatDuration } from "../utils/format";
 import AchievementBadge from "./AchievementBadge.astro";
 import Icon from "./Icon.astro";
 
 interface Props {
-  game: SteamGame;
+  game: GameRecord | LibraryGame;
   href: string;
   eager?: boolean;
+  viewMode?: "merged" | "platform";
 }
 
-const { game, href, eager = false } = Astro.props;
+const { game, href, eager = false, viewMode = "records" in game ? "merged" : "platform" } = Astro.props;
+const isMerged = "records" in game;
+const sources = isMerged ? game.sources : [game.source];
 const cover = game.store.headerImageUrl;
 const genres = game.store.genres.slice(0, 2);
 const searchable = [game.name, ...game.store.genres, ...game.store.developers].join(" ").toLocaleLowerCase("zh-CN");
-const platforms = game.store.platforms.join(" ").toLocaleLowerCase("en-US");
+const sourceValues = sources.join(" ");
 const percentage = game.achievements.percentage;
 const achievementCategory =
   game.achievements.status === "none"
     ? "none"
     : game.achievements.status === "unavailable"
       ? "unavailable"
+      : game.achievements.status === "unsupported"
+        ? "unsupported"
       : percentage >= 100
         ? "perfect"
         : game.achievements.unlocked > 0
           ? "progress"
           : "untouched";
 const lastPlayed = game.lastPlayedAt ? Date.parse(game.lastPlayedAt) || 0 : 0;
+const totalMinutes = game.playtime.totalMinutes;
+const recentMinutes = game.playtime.recentMinutes;
+const identifier = isMerged
+  ? `${sources.length} ${sources.length === 1 ? "SOURCE" : "SOURCES"}`
+  : `${sourceLabels[game.source]} · ${game.externalId}`;
 ---
 
 <article
   class="game-card"
   data-game-card
+  data-view-mode={viewMode}
   data-search={searchable}
   data-genres={game.store.genres.join("|").toLocaleLowerCase("zh-CN")}
-  data-platforms={platforms}
+  data-sources={sourceValues}
   data-achievement={achievementCategory}
   data-last-played={lastPlayed}
-  data-playtime={game.playtime.foreverMinutes}
+  data-playtime={totalMinutes ?? -1}
   data-completion={percentage}
   data-name={game.name.toLocaleLowerCase("zh-CN")}
 >
@@ -57,19 +69,22 @@ const lastPlayed = game.lastPlayedAt ? Date.parse(game.lastPlayedAt) || 0 : 0;
       ) : (
         <span class="game-card__monogram" aria-hidden="true">{game.name.slice(0, 1).toLocaleUpperCase("zh-CN")}</span>
       )}
-      <span class="game-card__appid">APP {game.appId}</span>
+      <span class="game-card__appid" title={identifier}>{identifier}</span>
+      <span class="game-card__sources" aria-label={`来源：${sources.map((source) => sourceLabels[source]).join("、")}`}>
+        {sources.map((source) => <span class={`source-badge source-badge--${source}`}>{sourceLabels[source]}</span>)}
+      </span>
     </div>
     <div class="game-card__body">
       <div class="game-card__title-row">
         <div>
           <h3>{game.name}</h3>
-          <p>{formatDuration(game.playtime.foreverMinutes)} · {formatDate(game.lastPlayedAt)}</p>
+          <p>{formatDuration(totalMinutes)} · {formatActivityDate(game.lastPlayedAt, game.lastPlayedPrecision)}</p>
         </div>
         <span class="game-card__arrow" aria-hidden="true"><Icon name="arrow-up-right" size={18} /></span>
       </div>
       <div class="game-card__tags" aria-label="游戏类型">
         {genres.length > 0 ? genres.map((genre) => <span>{genre}</span>) : <span>游戏</span>}
-        {game.playtime.recentMinutes > 0 && <span class="game-card__recent">近两周 {formatDuration(game.playtime.recentMinutes)}</span>}
+        {recentMinutes !== undefined && recentMinutes > 0 && <span class="game-card__recent">近期 {formatDuration(recentMinutes)}</span>}
       </div>
       <div class="game-card__achievement">
         <AchievementBadge achievements={game.achievements} compact />
@@ -215,7 +230,38 @@ const lastPlayed = game.lastPlayedAt ? Date.parse(game.lastPlayedAt) || 0 : 0;
     backdrop-filter: blur(7px);
     font-size: 0.58rem;
     letter-spacing: 0.08em;
+    max-width: calc(100% - 24px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
+
+  .game-card__sources {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 2;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+
+  .source-badge {
+    padding: 3px 7px;
+    border: 1px solid color-mix(in srgb, var(--source-color) 42%, transparent);
+    border-radius: 999px;
+    color: var(--source-color);
+    background: rgba(5, 2, 10, 0.82);
+    backdrop-filter: blur(8px);
+    font-size: 0.56rem;
+    font-weight: 750;
+    letter-spacing: 0.035em;
+  }
+
+  .source-badge--steam { --source-color: #66c0f4; }
+  .source-badge--xbox { --source-color: #84d13b; }
+  .source-badge--epic { --source-color: #f3f3f3; }
+  .source-badge--switch { --source-color: #ff6570; }
 
   .game-card__body {
     flex: 1;

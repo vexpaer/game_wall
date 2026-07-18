@@ -1,4 +1,4 @@
-name: Deploy Game Wall
+name: Sync and deploy Game Wall
 
 on:
   push:
@@ -10,21 +10,32 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: github-pages
+  group: game-wall-sync-pages
   cancel-in-progress: false
 
 jobs:
   build:
-    name: Sync and build
+    name: Sync providers and build
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: read
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Require main for stateful provider sync
+        if: ${{ github.ref != 'refs/heads/main' && (vars.EPIC_SYNC_ENABLED == 'true' || vars.SWITCH_SYNC_MODE == 'nxapi') }}
+        shell: bash
+        run: |
+          echo "::error::Epic and nxapi stateful sync may only run from refs/heads/main."
+          exit 1
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
@@ -32,13 +43,13 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Install dependencies
+      - name: Install project dependencies
         run: npm ci
 
-      - name: Test data pipeline
+      - name: Run credential-safe tests
         run: npm test
 
-      - name: Create weekly store-cache key
+      - name: Create weekly public store-cache key
         id: store-cache-key
         shell: bash
         run: echo "week=$(date -u +'%G-%V')" >> "$GITHUB_OUTPUT"
@@ -47,18 +58,182 @@ jobs:
         uses: actions/cache@v6
         with:
           path: data/cache/store
-          key: steam-store-v1-${{ runner.os }}-${{ vars.STEAM_LANGUAGE || 'schinese' }}-${{ steps.store-cache-key.outputs.week }}
+          key: steam-store-v2-${{ runner.os }}-${{ vars.STEAM_LANGUAGE || 'schinese' }}-${{ steps.store-cache-key.outputs.week }}
           restore-keys: |
-            steam-store-v1-${{ runner.os }}-${{ vars.STEAM_LANGUAGE || 'schinese' }}-
+            steam-store-v2-${{ runner.os }}-${{ vars.STEAM_LANGUAGE || 'schinese' }}-
 
-      - name: Fetch Steam data
+      - name: Set up Python for Epic
+        if: ${{ vars.EPIC_SYNC_ENABLED == 'true' }}
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install pinned Legendary client
+        if: ${{ vars.EPIC_SYNC_ENABLED == 'true' }}
+        run: python -m pip install --disable-pip-version-check "legendary-gl==0.20.34"
+
+      - name: Install pinned nxapi client
+        if: ${{ vars.SWITCH_SYNC_MODE == 'nxapi' }}
+        run: npm install --global "nxapi@1.6.1"
+
+      - name: Restore encrypted Switch binding
+        if: ${{ vars.SWITCH_SYNC_MODE == 'nxapi' }}
+        shell: bash
+        env:
+          GAME_WALL_STATE_KEY: ${{ secrets.SWITCH_STATE_KEY }}
+          NXAPI_DATA_PATH: ${{ runner.temp }}/game-wall-nxapi
+        run: |
+          umask 077
+          mkdir -p "$NXAPI_DATA_PATH"
+          rm -f "$RUNNER_TEMP/game-wall-nxapi-restored"
+          npm run state -- decrypt data/credentials/nxapi-state.enc "$RUNNER_TEMP/nxapi-state.tgz"
+          tar -tzf "$RUNNER_TEMP/nxapi-state.tgz" > "$RUNNER_TEMP/nxapi-state-files.txt"
+          if grep -Eq '(^/|(^|/)\.\.(/|$))' "$RUNNER_TEMP/nxapi-state-files.txt"; then
+            echo "::error::The encrypted nxapi archive contains an unsafe path."
+            exit 1
+          fi
+          tar -tvzf "$RUNNER_TEMP/nxapi-state.tgz" > "$RUNNER_TEMP/nxapi-state-listing.txt"
+          if grep -Eq '^[^d-]' "$RUNNER_TEMP/nxapi-state-listing.txt"; then
+            echo "::error::The encrypted nxapi archive contains an unsupported special entry."
+            exit 1
+          fi
+          tar --no-same-owner --no-same-permissions -xzf "$RUNNER_TEMP/nxapi-state.tgz" -C "$NXAPI_DATA_PATH"
+          touch "$RUNNER_TEMP/game-wall-nxapi-restored"
+
+      - name: Fetch Switch daily summaries
+        if: ${{ vars.SWITCH_SYNC_MODE == 'nxapi' }}
+        shell: bash
+        env:
+          DEBUG: ""
+          NXAPI_DATA_PATH: ${{ runner.temp }}/game-wall-nxapi
+          NXAPI_SKIP_UPDATE_CHECK: "1"
+          NXAPI_USER_AGENT: game-wall/0.1.0 (+${{ github.server_url }}/${{ github.repository }})
+          SWITCH_DEVICE_ID: ${{ vars.SWITCH_DEVICE_ID }}
+          XDG_CACHE_HOME: ${{ runner.temp }}/game-wall-nxapi-cache
+          XDG_CONFIG_HOME: ${{ runner.temp }}/game-wall-nxapi-config
+          XDG_DATA_HOME: ${{ runner.temp }}/game-wall-nxapi-default-data
+          XDG_STATE_HOME: ${{ runner.temp }}/game-wall-nxapi-state
+        run: |
+          umask 077
+          test -n "$SWITCH_DEVICE_ID"
+          if ! nxapi --data-path "$NXAPI_DATA_PATH" pctl daily-summaries "$SWITCH_DEVICE_ID" --json > "$RUNNER_TEMP/switch-daily.json" 2> "$RUNNER_TEMP/nxapi-error.log"; then
+            echo "::error::Switch nxapi sync failed; rebind locally if the session has expired."
+            exit 1
+          fi
+          npm run switch:history -- "$NXAPI_DATA_PATH/game-wall-daily-history.json" "$RUNNER_TEMP/switch-daily.json" "$RUNNER_TEMP/switch-import.json"
+          echo "SWITCH_IMPORT_FILE=$RUNNER_TEMP/switch-import.json" >> "$GITHUB_ENV"
+          echo "SWITCH_IMPORT_FORMAT=json" >> "$GITHUB_ENV"
+
+      - name: Re-encrypt refreshed Switch binding
+        if: ${{ always() && vars.SWITCH_SYNC_MODE == 'nxapi' }}
+        shell: bash
+        env:
+          GAME_WALL_STATE_KEY: ${{ secrets.SWITCH_STATE_KEY }}
+          NXAPI_DATA_PATH: ${{ runner.temp }}/game-wall-nxapi
+        run: |
+          if test -f "$RUNNER_TEMP/game-wall-nxapi-restored"; then
+            umask 077
+            tar -czf "$RUNNER_TEMP/nxapi-state-new.tgz" -C "$NXAPI_DATA_PATH" .
+            npm run state -- encrypt "$RUNNER_TEMP/nxapi-state-new.tgz" data/credentials/nxapi-state.enc
+          fi
+
+      - name: Remove plaintext Switch binding
+        if: ${{ always() && vars.SWITCH_SYNC_MODE == 'nxapi' }}
+        shell: bash
+        env:
+          NXAPI_DATA_PATH: ${{ runner.temp }}/game-wall-nxapi
+          XDG_CACHE_HOME: ${{ runner.temp }}/game-wall-nxapi-cache
+          XDG_CONFIG_HOME: ${{ runner.temp }}/game-wall-nxapi-config
+          XDG_DATA_HOME: ${{ runner.temp }}/game-wall-nxapi-default-data
+          XDG_STATE_HOME: ${{ runner.temp }}/game-wall-nxapi-state
+        run: |
+          if [[ "$NXAPI_DATA_PATH" != "$RUNNER_TEMP/game-wall-nxapi" \
+            || "$XDG_CACHE_HOME" != "$RUNNER_TEMP/game-wall-nxapi-cache" \
+            || "$XDG_CONFIG_HOME" != "$RUNNER_TEMP/game-wall-nxapi-config" \
+            || "$XDG_DATA_HOME" != "$RUNNER_TEMP/game-wall-nxapi-default-data" \
+            || "$XDG_STATE_HOME" != "$RUNNER_TEMP/game-wall-nxapi-state" ]]; then
+            echo "::error::Refusing to clean an unexpected nxapi path."
+            exit 1
+          fi
+          rm -rf -- "$NXAPI_DATA_PATH" "$XDG_CACHE_HOME" "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_STATE_HOME"
+          # switch-import.json is sanitized public data and is intentionally kept
+          # until library:sync consumes it later in this job.
+          rm -f -- "$RUNNER_TEMP/nxapi-state.tgz" "$RUNNER_TEMP/nxapi-state-new.tgz" "$RUNNER_TEMP/nxapi-state-files.txt" "$RUNNER_TEMP/nxapi-state-listing.txt" "$RUNNER_TEMP/switch-daily.json" "$RUNNER_TEMP/nxapi-error.log" "$RUNNER_TEMP/game-wall-nxapi-restored"
+
+      - name: Configure committed Switch import
+        if: ${{ vars.SWITCH_SYNC_MODE != 'nxapi' && vars.SWITCH_IMPORT_FILE != '' }}
+        shell: bash
+        env:
+          CONFIGURED_SWITCH_IMPORT_FILE: ${{ vars.SWITCH_IMPORT_FILE }}
+          CONFIGURED_SWITCH_IMPORT_FORMAT: ${{ vars.SWITCH_IMPORT_FORMAT || 'json' }}
+        run: |
+          echo "SWITCH_IMPORT_FILE=$CONFIGURED_SWITCH_IMPORT_FILE" >> "$GITHUB_ENV"
+          echo "SWITCH_IMPORT_FORMAT=$CONFIGURED_SWITCH_IMPORT_FORMAT" >> "$GITHUB_ENV"
+
+      - name: Restore encrypted Epic binding
+        if: ${{ vars.EPIC_SYNC_ENABLED == 'true' }}
+        shell: bash
+        env:
+          GAME_WALL_STATE_KEY: ${{ secrets.EPIC_STATE_KEY }}
+          LEGENDARY_CONFIG_PATH: ${{ runner.temp }}/game-wall-legendary
+        run: |
+          umask 077
+          mkdir -p "$LEGENDARY_CONFIG_PATH"
+          rm -f "$RUNNER_TEMP/game-wall-epic-restored"
+          test -f data/credentials/epic-user.enc
+          npm run state -- decrypt data/credentials/epic-user.enc "$LEGENDARY_CONFIG_PATH/user.json"
+          touch "$RUNNER_TEMP/game-wall-epic-restored"
+
+      - name: Fetch all configured game libraries
         env:
           STEAM_API_KEY: ${{ secrets.STEAM_API_KEY }}
           STEAM_USER: ${{ vars.STEAM_USER }}
           STEAM_LANGUAGE: ${{ vars.STEAM_LANGUAGE || 'schinese' }}
           STEAM_STORE_CACHE_DIR: data/cache/store
           STEAM_STORE_CACHE_TTL_MS: "604800000"
-        run: npm run steam:sync
+          OPENXBL_API_KEY: ${{ secrets.OPENXBL_API_KEY }}
+          EPIC_SYNC_ENABLED: ${{ vars.EPIC_SYNC_ENABLED || 'false' }}
+          EPIC_DISPLAY_NAME: ${{ vars.EPIC_DISPLAY_NAME }}
+          LEGENDARY_CONFIG_PATH: ${{ runner.temp }}/game-wall-legendary
+          SWITCH_LOCALE: ${{ vars.SWITCH_LOCALE || 'ja-JP' }}
+          SWITCH_DISPLAY_NAME: ${{ vars.SWITCH_DISPLAY_NAME }}
+          SWITCH_ACCOUNT_ID: ${{ vars.SWITCH_ACCOUNT_ID }}
+          SWITCH_DEVICE: ${{ vars.SWITCH_DEVICE || 'Nintendo Switch Lite' }}
+        run: npm run library:sync
+
+      - name: Re-encrypt rotated Epic binding
+        if: ${{ always() && vars.EPIC_SYNC_ENABLED == 'true' }}
+        shell: bash
+        env:
+          GAME_WALL_STATE_KEY: ${{ secrets.EPIC_STATE_KEY }}
+          LEGENDARY_CONFIG_PATH: ${{ runner.temp }}/game-wall-legendary
+        run: |
+          if test -f "$RUNNER_TEMP/game-wall-epic-restored" && test -f "$LEGENDARY_CONFIG_PATH/user.json"; then
+            if ! node -e 'try { JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8")); } catch { process.exit(1); }' "$LEGENDARY_CONFIG_PATH/user.json"; then
+              echo "::error::Legendary credential state is invalid; the encrypted state was not replaced."
+              exit 1
+            fi
+            umask 077
+            npm run state -- encrypt "$LEGENDARY_CONFIG_PATH/user.json" data/credentials/epic-user.enc
+          fi
+
+      - name: Remove plaintext Epic binding
+        if: ${{ always() && vars.EPIC_SYNC_ENABLED == 'true' }}
+        shell: bash
+        env:
+          LEGENDARY_CONFIG_PATH: ${{ runner.temp }}/game-wall-legendary
+        run: |
+          if [[ "$LEGENDARY_CONFIG_PATH" != "$RUNNER_TEMP/game-wall-legendary" ]]; then
+            echo "::error::Refusing to clean an unexpected Legendary path."
+            exit 1
+          fi
+          rm -rf -- "$LEGENDARY_CONFIG_PATH"
+          rm -f -- "$RUNNER_TEMP/game-wall-epic-restored"
+
+      - name: Remove temporary provider exports
+        if: ${{ always() }}
+        shell: bash
+        run: rm -f -- "$RUNNER_TEMP/switch-import.json"
 
       - name: Validate generated snapshot
         run: npm run data:validate
@@ -81,6 +256,39 @@ jobs:
         with:
           path: dist
 
+      - name: Persist rotated encrypted state
+        id: persist_state
+        if: ${{ always() && github.ref == 'refs/heads/main' && (vars.EPIC_SYNC_ENABLED == 'true' || vars.SWITCH_SYNC_MODE == 'nxapi') }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git add -- data/credentials
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git config user.name "game-wall[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore: rotate encrypted provider state [skip ci]"
+          gh auth setup-git
+          for attempt in 1 2 3; do
+            if git fetch origin "$GITHUB_REF_NAME" && git rebase "origin/$GITHUB_REF_NAME" && git push origin "HEAD:$GITHUB_REF_NAME"; then
+              exit 0
+            fi
+            git rebase --abort >/dev/null 2>&1 || true
+          done
+          echo "::error::Could not persist encrypted provider state after three attempts."
+          exit 1
+
+      - name: Upload encrypted state recovery artifact
+        if: ${{ always() && steps.persist_state.outcome == 'failure' }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: game-wall-encrypted-state-recovery-${{ github.run_id }}-${{ github.run_attempt }}
+          path: data/credentials/*.enc
+          if-no-files-found: error
+          retention-days: 7
+
   deploy:
     name: Deploy
     environment:
@@ -88,6 +296,9 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     needs: build
+    permissions:
+      pages: write
+      id-token: write
 
     steps:
       - name: Deploy to GitHub Pages

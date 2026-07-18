@@ -130,7 +130,7 @@ test("buildSiteSnapshot filters unplayed games, retains played free games and is
 
   assert.equal(snapshot.status, "ready");
   assert.equal(snapshot.generatedAt, "2026-07-16T02:17:00.000Z");
-  assert.deepEqual(snapshot.games.map((game) => game.appId), [10, 20]);
+  assert.deepEqual(snapshot.games.map((game) => game.externalId), ["10", "20"]);
   assert.equal(snapshot.games[0]?.name, "Played Free Game");
   assert.equal(snapshot.games[0]?.store.shortDescription, "Free fixture");
   assert.deepEqual(snapshot.games[1]?.store, {
@@ -141,13 +141,17 @@ test("buildSiteSnapshot filters unplayed games, retains played free games and is
     screenshots: []
   });
   assert.deepEqual(snapshot.summary, {
+    uniqueGames: 2,
+    platformRecords: 2,
     playedGames: 2,
+    knownPlaytimeRecords: 2,
     totalMinutes: 300,
     recentMinutes: 30,
     unlockedAchievements: 1,
     totalAchievements: 2,
     achievementPercentage: 50,
-    perfectGames: 0
+    perfectGames: 0,
+    sourceCounts: { steam: 2, xbox: 0, epic: 0, switch: 0 }
   });
   assert.ok(requestedUrls.every((url) => !url.includes(API_KEY)));
   assert.ok(requestedUrls.every((url) => !url.includes("appid=30") && !url.includes("appids=30")));
@@ -167,9 +171,10 @@ test("a valid empty OwnedGames response produces the private state", async () =>
     storeCache: cache(),
     now: () => new Date("2026-07-16T02:17:00.000Z")
   });
-  assert.equal(snapshot.status, "private");
+  assert.equal(snapshot.status, "empty");
   assert.deepEqual(snapshot.games, []);
-  assert.equal(snapshot.profile?.personaName, "Fixture Player");
+  assert.equal(snapshot.accounts[0]?.status, "private");
+  assert.equal(snapshot.accounts[0]?.profile?.displayName, "Fixture Player");
 });
 
 test("a public library with only unplayed games produces the empty state", async () => {
@@ -186,13 +191,17 @@ test("a public library with only unplayed games produces the empty state", async
   });
   assert.equal(snapshot.status, "empty");
   assert.deepEqual(snapshot.summary, {
+    uniqueGames: 0,
+    platformRecords: 0,
     playedGames: 0,
+    knownPlaytimeRecords: 0,
     totalMinutes: 0,
     recentMinutes: 0,
     unlockedAchievements: 0,
     totalAchievements: 0,
     achievementPercentage: 0,
-    perfectGames: 0
+    perfectGames: 0,
+    sourceCounts: { steam: 0, xbox: 0, epic: 0, switch: 0 }
   });
 });
 
@@ -212,14 +221,16 @@ test("the checked-in fixture is a valid deterministic snapshot", () => {
   const fixture = JSON.parse(readFileSync("tests/fixtures/site-snapshot.json", "utf8")) as unknown;
   const parsed = parseSiteSnapshot(fixture);
   assert.equal(parsed.status, "ready");
-  assert.deepEqual(parsed.games.map((game) => game.appId), [570, 730, 1245620]);
+  assert.equal(parsed.summary.uniqueGames, 7);
+  assert.equal(parsed.summary.platformRecords, 9);
+  assert.deepEqual(parsed.games.filter((game) => game.canonicalId === "fortnite-33ee0b2a").map((game) => game.source), ["xbox", "epic", "switch"]);
 });
 
 test("snapshot validation rejects internally inconsistent or polluted data", () => {
   const fixture = JSON.parse(readFileSync("tests/fixtures/site-snapshot.json", "utf8")) as any;
 
   const wrongAchievement = structuredClone(fixture);
-  wrongAchievement.games[1].achievements.percentage = 99;
+  wrongAchievement.games[0].achievements.percentage = 99;
   assert.throws(() => parseSiteSnapshot(wrongAchievement), /percentage/u);
 
   const wrongSummary = structuredClone(fixture);
@@ -227,8 +238,8 @@ test("snapshot validation rejects internally inconsistent or polluted data", () 
   assert.throws(() => parseSiteSnapshot(wrongSummary), /summary.totalMinutes/u);
 
   const wrongProfile = structuredClone(fixture);
-  wrongProfile.profile.steamId = "76561198000000001";
-  assert.throws(() => parseSiteSnapshot(wrongProfile), /profile.steamId/u);
+  wrongProfile.accounts[0].source = "xbox";
+  assert.throws(() => parseSiteSnapshot(wrongProfile), /snapshot.accounts/u);
 
   const pollutedStore = structuredClone(fixture);
   pollutedStore.games[0].store.apiKey = "must-not-survive";
@@ -237,5 +248,5 @@ test("snapshot validation rejects internally inconsistent or polluted data", () 
   const nonZeroEmpty = structuredClone(fixture);
   nonZeroEmpty.status = "empty";
   nonZeroEmpty.games = [];
-  assert.throws(() => parseSiteSnapshot(nonZeroEmpty), /summary.playedGames/u);
+  assert.throws(() => parseSiteSnapshot(nonZeroEmpty), /summary\.(?:uniqueGames|playedGames)/u);
 });

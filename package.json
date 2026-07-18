@@ -3,7 +3,7 @@
   "type": "module",
   "version": "0.1.0",
   "private": true,
-  "description": "A Steam-powered personal game dashboard built with Astro",
+  "description": "A multi-platform personal game dashboard built with Astro",
   "engines": {
     "node": ">=22.12.0"
   },
@@ -14,6 +14,9 @@
     "build:fixture": "npm run data:fixture && npm run build",
     "preview": "astro preview",
     "steam:sync": "tsx scripts/sync-steam.ts",
+    "library:sync": "tsx scripts/sync-library.ts",
+    "state": "tsx scripts/credential-state.ts",
+    "switch:history": "tsx scripts/update-switch-history.ts",
     "data:fixture": "tsx scripts/prepare-fixture.ts",
     "data:validate": "tsx scripts/validate-snapshot.ts",
     "test": "tsx --test tests/*.test.ts",
